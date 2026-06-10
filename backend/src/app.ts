@@ -10,6 +10,7 @@ import { errorHandler } from "./middleware/errorHandler.js";
 import { sessionMiddleware } from "./config/session.js";
 
 const app = express();
+app.set("trust proxy", 1);
 
 const corsOrigins = process.env.CLIENT_URL
   ? process.env.CLIENT_URL.split(",").map((o) => o.trim())
