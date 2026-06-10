@@ -92,7 +92,7 @@ Features are classified for **Web v1.0** based on competition mandatory requirem
 | ---- | ------------------------------------------------------------------------------ | ------------- |
 | F-01 | User registration & login (Passenger / Driver)                                 | Implemented   |
 | F-02 | Session-based authentication (HTTP-only cookie, PostgreSQL store)              | Implemented   |
-| F-03 | Driver profile & vehicle info                                                  | Implemented   |
+| F-03 | Driver profile, vehicle info, and UPI ID setup                                 | Implemented   |
 | F-04 | Driver online/offline toggle                                                   | Implemented   |
 | F-05 | View available drivers (passenger)                                             | Implemented   |
 | F-06 | Request ride with pickup & destination                                         | Implemented   |
@@ -139,7 +139,7 @@ Features are classified for **Web v1.0** based on competition mandatory requirem
 | Native mobile app                   | Web-only product scope   |
 | Full admin panel                    | Out of current scope     |
 | ML demand forecasting               | Complexity; defer        |
-| Real / simulated payment (F-25)     | Out of current scope     |
+| P2P UPI QR Payment Flow (F-25)      | Implemented              |
 | Biometric login (F-27)              | Out of current scope     |
 | Driver document file upload (F-28)  | Text verification implemented; file attachments deferred |
 | In-app chat (F-29)                  | Out of current scope     |
@@ -594,7 +594,7 @@ Features are classified for **Web v1.0** based on competition mandatory requirem
 | /driver | Dashboard | Online toggle, map, active rides, stats |
 | /driver/requests | Requests | Accept / reject pending rides |
 | /driver/analytics | Analytics | Personal stats, campus demand, history |
-| /driver/profile | Profile | Vehicle info, notifications, logout |
+| /driver/profile | Profile | Vehicle info, UPI setup, notifications, logout |
 
 ### 11.4 Admin Routes
 
@@ -682,7 +682,7 @@ cd backend && npm run db:push
 
 Key `rides` columns: `scheduled_at`, `drivers_notified_at`, `cancelled_by`.
 
-Key `driver_profiles` columns: `license_number`, `government_id_number`, `verification_status`, `verification_submitted_at`, `verification_rejection_reason`.
+Key `driver_profiles` columns: `license_number`, `government_id_number`, `verification_status`, `verification_submitted_at`, `verification_rejection_reason`, `upi_id`.
 
 Seed accounts: `passenger@test.com`, `driver@test.com` (pre-verified), `admin@test.com` — password `password123`.
 

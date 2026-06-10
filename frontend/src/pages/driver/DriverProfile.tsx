@@ -32,6 +32,7 @@ export function DriverProfile() {
   const updateProfile = useAuthStore((s) => s.updateProfile);
   const updateVehicle = useAuthStore((s) => s.updateVehicle);
   const submitVerification = useAuthStore((s) => s.submitVerification);
+  const updateUpiId = useAuthStore((s) => s.updateUpiId);
   const logout = useAuthStore((s) => s.logout);
   const navigate = useNavigate();
   const addToast = useToastStore((s) => s.addToast);
@@ -94,7 +95,7 @@ export function DriverProfile() {
     if (!upiId.trim()) return;
     setSavingUpi(true);
     try {
-      await api.updateDriverUpiId(upiId.trim());
+      await updateUpiId(upiId.trim());
       addToast('success', 'UPI ID saved');
     } catch {
       addToast('error', 'Failed to save UPI ID');

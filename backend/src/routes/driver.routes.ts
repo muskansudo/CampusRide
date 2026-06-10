@@ -126,10 +126,19 @@ router.put(
   requireRole(Role.DRIVER),
   async (req: AuthRequest, res, next) => {
     try {
-      const { upiId } = z.object({ upiId: z.string().min(3) }).parse(req.body);
+      const { upiId } = z
+        .object({
+          upiId: z
+            .string()
+            .regex(/^[a-zA-Z0-9.\-_]{2,256}@[a-zA-Z]{2,64}$/, "Invalid UPI ID format"),
+        })
+        .parse(req.body);
       const profile = await updateDriverUpiId(req.user!.userId, upiId);
       res.json(profile);
     } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({ error: err.errors[0].message });
+      }
       next(err);
     }
   }
