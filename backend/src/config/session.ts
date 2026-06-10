@@ -8,7 +8,7 @@ export const SESSION_COOKIE_NAME = "campusride.sid";
 
 export const sessionMiddleware = session({
   store: new PgSession({
-    conString: process.env.DATABASE_URL,
+    conString: process.env.DIRECT_URL || process.env.DATABASE_URL,
     createTableIfMissing: true,
   }),
   secret:
