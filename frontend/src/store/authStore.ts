@@ -20,6 +20,7 @@ interface AuthState {
     licenseNumber: string;
     governmentIdNumber: string;
   }) => Promise<void>;
+  updateUpiId: (upiId: string) => Promise<void>;
 }
 
 export const useAuthStore = create<AuthState>((set, get) => ({
@@ -80,6 +81,19 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   submitVerification: async (data) => {
     const profile = await api.submitVerification(data);
+    const user = get().user!;
+    set({
+      user: {
+        ...user,
+        driverProfile: user.driverProfile
+          ? { ...user.driverProfile, ...profile }
+          : null,
+      },
+    });
+  },
+
+  updateUpiId: async (upiId: string) => {
+    const profile = await api.updateDriverUpiId(upiId);
     const user = get().user!;
     set({
       user: {
