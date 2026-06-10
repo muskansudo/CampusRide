@@ -91,6 +91,8 @@ export const api = {
 
   getActiveRide: () => request<Ride | null>('/rides/active'),
 
+  getRide: (id: string) => request<Ride>(`/rides/${id}`),
+
   getPendingRides: () => request<Ride[]>('/rides/pending'),
 
   getRideHistory: () => request<Ride[]>('/rides/history'),

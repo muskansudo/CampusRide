@@ -106,14 +106,37 @@ export function PassengerHome() {
         ? 1
         : 2;
 
+  const openPendingPayment = useCallback(async (ride: Ride) => {
+    try {
+      const fresh = await api.getRide(ride.id);
+      if (fresh.payment?.status === 'PENDING') {
+        setPendingPayment({ payment: fresh.payment, ride: fresh });
+        return;
+      }
+    } catch {
+      // fall back to socket payload
+    }
+    if (ride.payment?.status === 'PENDING') {
+      setPendingPayment({ payment: ride.payment, ride });
+    }
+  }, []);
+
   const loadData = useCallback(async () => {
-    const [driversData, ride] = await Promise.all([
+    const [driversData, ride, history] = await Promise.all([
       api.getAvailableDrivers(),
       api.getActiveRide(),
+      api.getRideHistory(),
     ]);
     setDrivers(driversData);
     setActiveRide(ride);
-  }, []);
+
+    const pendingRide = history.find(
+      (r) => r.status === 'COMPLETED' && r.payment?.status === 'PENDING'
+    );
+    if (pendingRide?.payment) {
+      await openPendingPayment(pendingRide);
+    }
+  }, [openPendingPayment]);
 
   useEffect(() => {
     loadData().catch(console.error);
@@ -128,7 +151,7 @@ export function PassengerHome() {
         setActiveRide(ride);
         if (ride.status === 'COMPLETED') {
           if (ride.payment && ride.payment.status === 'PENDING') {
-            setPendingPayment({ payment: ride.payment, ride });
+            openPendingPayment(ride);
           } else {
             setRateRide(ride);
           }
@@ -152,7 +175,7 @@ export function PassengerHome() {
       socket.off('ride:cancelled', onRideUpdate);
       socket.off('driver:location', onDriverLocation);
     };
-  }, []);
+  }, [openPendingPayment]);
 
   const onRefresh = async () => {
     setRefreshing(true);

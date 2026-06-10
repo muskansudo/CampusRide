@@ -1,8 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/store/authStore';
 import { useToastStore } from '@/store/toastStore';
-import { api } from '@/lib/api';
 import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
@@ -33,6 +32,7 @@ export function DriverProfile() {
   const updateVehicle = useAuthStore((s) => s.updateVehicle);
   const submitVerification = useAuthStore((s) => s.submitVerification);
   const updateUpiId = useAuthStore((s) => s.updateUpiId);
+  const refreshUser = useAuthStore((s) => s.refreshUser);
   const logout = useAuthStore((s) => s.logout);
   const navigate = useNavigate();
   const addToast = useToastStore((s) => s.addToast);
@@ -49,6 +49,16 @@ export function DriverProfile() {
   const [savingUpi, setSavingUpi] = useState(false);
   const [saving, setSaving] = useState(false);
   const [submittingVerification, setSubmittingVerification] = useState(false);
+
+  useEffect(() => {
+    refreshUser().catch(() => {});
+  }, [refreshUser]);
+
+  useEffect(() => {
+    if (user?.driverProfile?.upiId) {
+      setUpiId(user.driverProfile.upiId);
+    }
+  }, [user?.driverProfile?.upiId]);
 
   const profile = user?.driverProfile;
   const verificationStatus = profile?.verificationStatus ?? 'PENDING';
@@ -97,8 +107,8 @@ export function DriverProfile() {
     try {
       await updateUpiId(upiId.trim());
       addToast('success', 'UPI ID saved');
-    } catch {
-      addToast('error', 'Failed to save UPI ID');
+    } catch (err) {
+      addToast('error', err instanceof Error ? err.message : 'Failed to save UPI ID');
     } finally {
       setSavingUpi(false);
     }

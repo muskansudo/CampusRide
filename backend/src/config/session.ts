@@ -6,9 +6,25 @@ const PgSession = connectPgSimple(session);
 
 export const SESSION_COOKIE_NAME = "campusride.sid";
 
+const sessionDbUrl = process.env.DIRECT_URL || process.env.DATABASE_URL;
+
+function sessionPgConfig(connectionString: string | undefined) {
+  if (!connectionString) return { connectionString };
+
+  const isSupabase = connectionString.includes("supabase");
+  if (!isSupabase) return { connectionString };
+
+  const url = new URL(connectionString);
+  url.searchParams.delete("sslmode");
+  return {
+    connectionString: url.toString(),
+    ssl: { rejectUnauthorized: false },
+  };
+}
+
 export const sessionMiddleware = session({
   store: new PgSession({
-    conString: process.env.DIRECT_URL || process.env.DATABASE_URL,
+    conObject: sessionPgConfig(sessionDbUrl),
     createTableIfMissing: true,
   }),
   secret:

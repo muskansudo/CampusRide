@@ -3,6 +3,10 @@ declare module "connect-pg-simple" {
 
   interface PgStoreOptions {
     conString?: string;
+    conObject?: {
+      connectionString?: string;
+      ssl?: boolean | { rejectUnauthorized?: boolean };
+    };
     createTableIfMissing?: boolean;
   }
 

@@ -58,6 +58,7 @@ async function main() {
     data: {
       licenseNumber: "DL-123456",
       governmentIdNumber: "GOV-987654",
+      upiId: "testdriver@paytm",
       verificationStatus: "VERIFIED",
       verificationSubmittedAt: new Date(),
     },
