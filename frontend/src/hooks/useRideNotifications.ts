@@ -71,7 +71,7 @@ export function useRideNotifications() {
       );
     };
 
-    const onDriverRideRemoved = (ride: Ride) => {
+    const onDriverRideRemoved = () => {
       if (user.role !== 'DRIVER') return;
       decrementBadge();
     };

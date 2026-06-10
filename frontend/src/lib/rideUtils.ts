@@ -1,6 +1,11 @@
 import type { Ride } from '@/types';
 
-export function getCancelledByLabel(ride: Ride): string | null {
+export function getCancelledByLabel(ride: {
+  status: string;
+  cancelledBy?: string | null;
+  passengerId: string;
+  driverId?: string | null;
+}): string | null {
   if (ride.status !== 'CANCELLED') return null;
 
   if (!ride.cancelledBy) {
