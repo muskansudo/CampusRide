@@ -1,6 +1,5 @@
 export type LatLng = [number, number];
 
-/** Fetch a driving route between two points; falls back to a straight line. */
 export async function fetchDrivingRoute(from: LatLng, to: LatLng): Promise<LatLng[]> {
   try {
     const url = `https://router.project-osrm.org/route/v1/driving/${from[1]},${from[0]};${to[1]},${to[0]}?overview=full&geometries=geojson`;

@@ -93,7 +93,6 @@ export function initSocketServer(
             isOnline: false,
           });
         } catch {
-          // ignore on disconnect
         }
       }
     });

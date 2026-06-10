@@ -160,7 +160,6 @@ export async function getDriverAnalytics(userId: string) {
       ? (totalRidesCompleted / (totalRidesCompleted + totalCancelled)) * 100
       : 0;
 
-  // Build 7-day chart data (bucket in JS to avoid DATE_TRUNC)
   const days: Array<{ date: string; count: number }> = [];
   for (let i = 6; i >= 0; i--) {
     const d = new Date(now);

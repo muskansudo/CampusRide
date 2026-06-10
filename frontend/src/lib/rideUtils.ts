@@ -1,6 +1,5 @@
 import type { Ride } from '@/types';
 
-/** Who cancelled a ride, for history UI. */
 export function getCancelledByLabel(ride: Ride): string | null {
   if (ride.status !== 'CANCELLED') return null;
 

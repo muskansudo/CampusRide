@@ -85,7 +85,6 @@ export function PaymentModal({ payment, driverName, driverUpiId, onClose }: Paym
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-4 backdrop-blur-sm sm:items-center">
       <div className="glass w-full max-w-sm rounded-3xl border border-glass-border">
-        {/* Header */}
         <div className="border-b border-glass-border px-6 py-5">
           <p className="text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant">
             Ride complete
@@ -96,7 +95,6 @@ export function PaymentModal({ payment, driverName, driverUpiId, onClose }: Paym
           </div>
         </div>
 
-        {/* Tabs */}
         <div className="flex gap-1 border-b border-glass-border px-4 pt-3">
           {tabs.map(({ id, label, icon: Icon }) => (
             <button
@@ -116,7 +114,6 @@ export function PaymentModal({ payment, driverName, driverUpiId, onClose }: Paym
           ))}
         </div>
 
-        {/* Tab content */}
         <div className="px-6 py-5">
           {tab === 'upi' && (
             <div className="space-y-4">

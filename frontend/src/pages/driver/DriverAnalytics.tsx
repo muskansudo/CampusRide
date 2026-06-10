@@ -105,7 +105,6 @@ export function DriverAnalytics() {
 
   return (
     <div>
-      {/* Header */}
       <div className="mb-6 flex items-start justify-between gap-4">
         <div>
           <p className="text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant">
@@ -117,7 +116,6 @@ export function DriverAnalytics() {
         <RefreshButton onClick={onRefresh} refreshing={refreshing} />
       </div>
 
-      {/* Summary cards */}
       <div className="grid grid-cols-2 gap-3">
         <Card variant="deep" className="col-span-2 !p-5">
           <div className="flex items-end justify-between">
@@ -180,7 +178,6 @@ export function DriverAnalytics() {
         </Card>
       </div>
 
-      {/* 7-day bar chart */}
       <div className="mt-6">
         <Card>
           <p className="mb-4 text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant">
@@ -200,7 +197,7 @@ export function DriverAnalytics() {
         </Card>
       </div>
 
-      {/* Peak hours — campus-wide demand */}
+
       <div className="mt-6">
         <Card>
           <p className="mb-1 text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant">
@@ -240,7 +237,6 @@ export function DriverAnalytics() {
         </Card>
       </div>
 
-      {/* Hotspots */}
       {((analytics.pickupHotspots?.length ?? 0) > 0 ||
         (analytics.destinationHotspots?.length ?? 0) > 0) && (
         <div className="mt-6 grid gap-3">
@@ -291,7 +287,6 @@ export function DriverAnalytics() {
         </div>
       )}
 
-      {/* Activity table */}
       {analytics.activityLog.length > 0 && (
         <div className="mt-6">
           <p className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant">
@@ -341,7 +336,6 @@ export function DriverAnalytics() {
         </div>
       )}
 
-      {/* Ratings received */}
       {analytics.recentRatings.length > 0 && (
         <div className="mt-6">
           <p className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant">
@@ -373,7 +367,6 @@ export function DriverAnalytics() {
         </div>
       )}
 
-      {/* Full history */}
       {analytics.fullHistory.length > 0 && (
         <div className="mt-6">
           <p className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant">

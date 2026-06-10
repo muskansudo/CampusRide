@@ -45,13 +45,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       try {
         await api.updateDriverStatus(false);
       } catch {
-        // Best-effort offline before clearing session
       }
     }
     try {
       await api.logout();
     } catch {
-      // Session may already be gone
     }
     disconnectSocket();
     set({ user: null });

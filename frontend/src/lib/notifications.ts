@@ -35,6 +35,5 @@ export function showBrowserNotification(title: string, body: string, tag?: strin
   try {
     new Notification(title, { body, tag, icon: '/favicon.ico' });
   } catch {
-    // ignore
   }
 }

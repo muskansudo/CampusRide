@@ -85,7 +85,6 @@ export function DriverDashboard() {
     };
   }, [loadDashboard]);
 
-  // Geolocation: watch position and send to backend every 10s when online
   useEffect(() => {
     if (!dashboard?.isOnline) {
       if (watchIdRef.current !== null) {
@@ -305,7 +304,6 @@ export function DriverDashboard() {
       )}
 
       <div className="grid grid-cols-2 gap-3">
-        {/* Daily earnings hero card */}
         <Card variant="deep" className="col-span-2 !p-5">
           <div className="flex items-end justify-between">
             <div>

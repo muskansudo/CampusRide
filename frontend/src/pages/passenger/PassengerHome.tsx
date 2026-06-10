@@ -26,7 +26,7 @@ import {
 } from '@/lib/savedLocations';
 import { SavedLocationChips } from '@/components/passenger/SavedLocationChips';
 
-const DEFAULT_CENTER: [number, number] = [29.8659, 77.8974]; // IIT Roorkee campus
+const DEFAULT_CENTER: [number, number] = [29.8659, 77.8974];
 
 function getMinScheduleValue() {
   const d = new Date(Date.now() + 15 * 60 * 1000);
@@ -390,7 +390,6 @@ export function PassengerHome() {
                 Set where you are and where you&apos;re going. A nearby driver can accept your request.
               </p>
 
-              {/* Step indicator */}
               <ol className="mt-5 space-y-2">
                 {STEPS.map((step, i) => {
                   const active = i === currentStep;

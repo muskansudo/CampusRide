@@ -53,7 +53,6 @@ async function main() {
     },
   });
 
-  // Keep demo driver verified with verification fields on re-seed
   await prisma.driverProfile.updateMany({
     where: { user: { email: "driver@test.com" } },
     data: {
