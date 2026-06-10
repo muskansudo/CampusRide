@@ -14,6 +14,7 @@ interface MapViewProps {
   center: [number, number];
   zoom?: number;
   markers?: MapMarker[];
+  route?: [number, number][];
   onMapClick?: (lat: number, lng: number) => void;
   className?: string;
 }
@@ -60,12 +61,22 @@ function makeIcon(type: MarkerType) {
   });
 }
 
-export function MapView({ center, zoom = 15, markers = [], onMapClick, className = '' }: MapViewProps) {
+export function MapView({
+  center,
+  zoom = 15,
+  markers = [],
+  route,
+  onMapClick,
+  className = '',
+}: MapViewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const markerRefs = useRef<L.Marker[]>([]);
+  const routeLayerRef = useRef<L.LayerGroup | null>(null);
+  const onMapClickRef = useRef(onMapClick);
 
-  // Init map
+  onMapClickRef.current = onMapClick;
+
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
 
@@ -81,24 +92,32 @@ export function MapView({ center, zoom = 15, markers = [], onMapClick, className
       maxZoom: 19,
     }).addTo(map);
 
-    if (onMapClick) {
-      map.on('click', (e) => onMapClick(e.latlng.lat, e.latlng.lng));
-    }
+    map.on('click', (e) => {
+      onMapClickRef.current?.(e.latlng.lat, e.latlng.lng);
+    });
 
     mapRef.current = map;
 
+    const resize = () => map.invalidateSize();
+    resize();
+    requestAnimationFrame(resize);
+
+    const observer = new ResizeObserver(resize);
+    observer.observe(containerRef.current);
+
     return () => {
+      observer.disconnect();
       map.remove();
       mapRef.current = null;
     };
   }, []);
 
-  // Update center when it changes (e.g. driver location)
   useEffect(() => {
-    mapRef.current?.setView(center, mapRef.current.getZoom(), { animate: true });
+    const map = mapRef.current;
+    if (!map) return;
+    map.setView(center, map.getZoom(), { animate: true });
   }, [center[0], center[1]]);
 
-  // Sync markers
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
@@ -110,12 +129,40 @@ export function MapView({ center, zoom = 15, markers = [], onMapClick, className
       return marker;
     });
 
-    // Fit bounds when multiple markers
-    if (markers.length > 1) {
+    if (!route && markers.length > 1) {
       const bounds = L.latLngBounds(markers.map((m) => m.position));
       map.fitBounds(bounds, { padding: [40, 40], maxZoom: 16, animate: true });
     }
-  }, [JSON.stringify(markers)]);
+  }, [JSON.stringify(markers), JSON.stringify(route)]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    routeLayerRef.current?.remove();
+    routeLayerRef.current = null;
+
+    if (route && route.length >= 2) {
+      routeLayerRef.current = L.layerGroup([
+        L.polyline(route, {
+          color: '#ffffff',
+          weight: 8,
+          opacity: 0.95,
+          lineCap: 'round',
+          lineJoin: 'round',
+        }),
+        L.polyline(route, {
+          color: '#714f96',
+          weight: 5,
+          opacity: 0.9,
+          lineCap: 'round',
+          lineJoin: 'round',
+        }),
+      ]).addTo(map);
+
+      map.fitBounds(L.latLngBounds(route), { padding: [48, 48], maxZoom: 16, animate: true });
+    }
+  }, [JSON.stringify(route)]);
 
   return <div ref={containerRef} className={className} style={{ zIndex: 0 }} />;
 }

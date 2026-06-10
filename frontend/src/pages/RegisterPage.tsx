@@ -20,18 +20,41 @@ export function RegisterPage() {
   const register = useAuthStore((s) => s.register);
   const navigate = useNavigate();
 
+  const isFormComplete = () => {
+    const baseFilled =
+      name.trim() !== '' &&
+      email.trim() !== '' &&
+      phone.trim() !== '' &&
+      password.trim() !== '';
+
+    if (role === 'DRIVER') {
+      return baseFilled && vehicleType.trim() !== '' && vehicleNumber.trim() !== '';
+    }
+
+    return baseFilled;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+
+    if (!isFormComplete()) {
+      setError('All fields are compulsory.');
+      return;
+    }
+
     setLoading(true);
     try {
       await register({
-        name,
-        email,
-        phone,
+        name: name.trim(),
+        email: email.trim(),
+        phone: phone.trim(),
         password,
         role,
-        ...(role === 'DRIVER' && { vehicleType, vehicleNumber }),
+        ...(role === 'DRIVER' && {
+          vehicleType: vehicleType.trim(),
+          vehicleNumber: vehicleNumber.trim(),
+        }),
       });
       navigate(role === 'DRIVER' ? '/driver' : '/passenger');
     } catch (err) {

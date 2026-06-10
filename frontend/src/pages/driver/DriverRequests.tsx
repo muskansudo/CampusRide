@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Inbox, RefreshCw } from 'lucide-react';
+import { Inbox } from 'lucide-react';
+import { RefreshButton } from '@/components/ui/RefreshButton';
 import { api } from '@/lib/api';
 import { getSocket } from '@/lib/socket';
 import { useToastStore } from '@/store/toastStore';
@@ -82,15 +83,7 @@ export function DriverRequests() {
             Accept ride requests from passengers
           </p>
         </div>
-        <button
-          type="button"
-          onClick={onRefresh}
-          disabled={refreshing}
-          className="flex h-10 w-10 items-center justify-center rounded-full glass text-primary transition hover:bg-white/50 disabled:opacity-50"
-          aria-label="Refresh"
-        >
-          <RefreshCw className={['h-4 w-4', refreshing ? 'animate-spin' : ''].join(' ')} />
-        </button>
+        <RefreshButton onClick={onRefresh} refreshing={refreshing} />
       </div>
 
       {rides.length > 0 && (

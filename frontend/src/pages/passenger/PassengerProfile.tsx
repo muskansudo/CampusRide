@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { UserAvatar } from '@/components/ui/UserAvatar';
 import { Divider } from '@/components/ui/Divider';
+import { NotificationSettings } from '@/components/settings/NotificationSettings';
 
 export function PassengerProfile() {
   const user = useAuthStore((s) => s.user);
@@ -31,8 +32,8 @@ export function PassengerProfile() {
     }
   };
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout();
     navigate('/login');
   };
 
@@ -80,6 +81,8 @@ export function PassengerProfile() {
           Save Changes
         </Button>
       </Card>
+
+      <NotificationSettings />
 
       <Card noPadding>
         <button

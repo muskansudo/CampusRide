@@ -1,7 +1,6 @@
 import bcrypt from "bcryptjs";
 import { Role } from "@prisma/client";
 import { prisma } from "../utils/prisma.js";
-import { signToken } from "../utils/jwt.js";
 
 export async function registerUser(data: {
   email: string;
@@ -11,7 +10,6 @@ export async function registerUser(data: {
   role: Role;
   vehicleType?: string;
   vehicleNumber?: string;
-  licenseInfo?: string;
 }) {
   const existing = await prisma.user.findUnique({ where: { email: data.email } });
   if (existing) {
@@ -32,7 +30,6 @@ export async function registerUser(data: {
           create: {
             vehicleType: data.vehicleType || "E-Rickshaw",
             vehicleNumber: data.vehicleNumber || "TBD",
-            licenseInfo: data.licenseInfo,
           },
         },
       }),
@@ -40,13 +37,7 @@ export async function registerUser(data: {
     include: { driverProfile: true },
   });
 
-  const token = signToken({
-    userId: user.id,
-    email: user.email,
-    role: user.role,
-  });
-
-  return { user: sanitizeUser(user), token };
+  return { user: sanitizeUser(user) };
 }
 
 export async function loginUser(email: string, password: string) {
@@ -64,13 +55,7 @@ export async function loginUser(email: string, password: string) {
     throw new Error("INVALID_CREDENTIALS");
   }
 
-  const token = signToken({
-    userId: user.id,
-    email: user.email,
-    role: user.role,
-  });
-
-  return { user: sanitizeUser(user), token };
+  return { user: sanitizeUser(user) };
 }
 
 export async function updateUserProfile(

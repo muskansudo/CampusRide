@@ -37,6 +37,7 @@ const createRideSchema = z.object({
   pickupLng: z.number().optional(),
   destLat: z.number().optional(),
   destLng: z.number().optional(),
+  scheduledAt: z.string().datetime().optional(),
 });
 
 router.post(
@@ -47,11 +48,18 @@ router.post(
     try {
       const data = createRideSchema.parse(req.body);
       const ride = await createRide(req.user!.userId, data);
-      if (io) emitRideEvent(io, "ride:requested", ride);
+      if (io && !ride.scheduledAt) {
+        emitRideEvent(io, "ride:requested", ride);
+      }
       res.status(201).json(ride);
     } catch (err) {
       if (err instanceof Error && err.message === "ACTIVE_RIDE_EXISTS") {
         return res.status(409).json({ error: "You already have an active ride" });
+      }
+      if (err instanceof Error && err.message === "INVALID_SCHEDULE") {
+        return res.status(400).json({
+          error: "Schedule must be 15 minutes to 7 days from now",
+        });
       }
       next(err);
     }
@@ -71,9 +79,9 @@ router.get(
   "/pending",
   authenticate,
   requireRole(Role.DRIVER),
-  async (_req, res, next) => {
+  async (req: AuthRequest, res, next) => {
     try {
-      const rides = await getPendingRidesForDrivers();
+      const rides = await getPendingRidesForDrivers(req.user!.userId);
       res.json(rides);
     } catch (err) {
       next(err);
@@ -141,6 +149,16 @@ router.put(
       }
       res.json({ success: true });
     } catch (err) {
+      if (err instanceof Error) {
+        const map: Record<string, string> = {
+          NOT_FOUND: "Ride not found",
+          INVALID_STATE: "Ride is no longer available",
+          DRIVER_OFFLINE: "Go online to manage ride requests",
+        };
+        if (map[err.message]) {
+          return res.status(400).json({ error: map[err.message] });
+        }
+      }
       next(err);
     }
   }

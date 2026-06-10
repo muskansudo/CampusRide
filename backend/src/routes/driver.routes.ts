@@ -9,6 +9,7 @@ import {
   updateDriverLocation,
   getDriverAnalytics,
 } from "../services/driver.service.js";
+import { submitDriverVerification } from "../services/verification.service.js";
 import { authenticate, requireRole, type AuthRequest } from "../middleware/auth.js";
 import type { Server as SocketServer } from "socket.io";
 import { emitDriverLocation } from "../sockets/events.js";
@@ -80,6 +81,39 @@ router.put(
       if (err instanceof Error && err.message === "NOT_DRIVER") {
         return res.status(403).json({ error: "Not a driver account" });
       }
+      if (err instanceof Error && err.message === "NOT_VERIFIED") {
+        return res.status(403).json({
+          error: "Driver verification required before going online",
+        });
+      }
+      next(err);
+    }
+  }
+);
+
+router.put(
+  "/verification",
+  authenticate,
+  requireRole(Role.DRIVER),
+  async (req: AuthRequest, res, next) => {
+    try {
+      const data = z
+        .object({
+          licenseNumber: z.string().min(3),
+          governmentIdNumber: z.string().min(3),
+        })
+        .parse(req.body);
+      const profile = await submitDriverVerification(req.user!.userId, data);
+      res.json(profile);
+    } catch (err) {
+      if (err instanceof Error) {
+        if (err.message === "NOT_DRIVER") {
+          return res.status(403).json({ error: "Not a driver account" });
+        }
+        if (err.message === "ALREADY_VERIFIED") {
+          return res.status(400).json({ error: "Already verified" });
+        }
+      }
       next(err);
     }
   }
@@ -95,7 +129,6 @@ router.put(
         .object({
           vehicleType: z.string().optional(),
           vehicleNumber: z.string().optional(),
-          licenseInfo: z.string().optional(),
         })
         .parse(req.body);
       const profile = await updateVehicleInfo(req.user!.userId, data);

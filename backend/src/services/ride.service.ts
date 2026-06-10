@@ -11,6 +11,23 @@ const rideInclude = {
   rating: true,
 };
 
+const MIN_SCHEDULE_MINUTES = 15;
+const MAX_SCHEDULE_DAYS = 7;
+
+function parseScheduledAt(value?: string): Date | null {
+  if (!value) return null;
+  const scheduled = new Date(value);
+  if (Number.isNaN(scheduled.getTime())) {
+    throw new Error("INVALID_SCHEDULE");
+  }
+  const minTime = Date.now() + MIN_SCHEDULE_MINUTES * 60 * 1000;
+  const maxTime = Date.now() + MAX_SCHEDULE_DAYS * 24 * 60 * 60 * 1000;
+  if (scheduled.getTime() < minTime || scheduled.getTime() > maxTime) {
+    throw new Error("INVALID_SCHEDULE");
+  }
+  return scheduled;
+}
+
 export async function createRide(
   passengerId: string,
   data: {
@@ -20,6 +37,7 @@ export async function createRide(
     pickupLng?: number;
     destLat?: number;
     destLng?: number;
+    scheduledAt?: string;
   }
 ) {
   const activeRide = await prisma.ride.findFirst({
@@ -33,6 +51,9 @@ export async function createRide(
     throw new Error("ACTIVE_RIDE_EXISTS");
   }
 
+  const scheduledAt = parseScheduledAt(data.scheduledAt);
+  const isImmediate = !scheduledAt;
+
   return prisma.ride.create({
     data: {
       passengerId,
@@ -42,9 +63,18 @@ export async function createRide(
       pickupLng: data.pickupLng,
       destLat: data.destLat,
       destLng: data.destLng,
+      scheduledAt,
+      driversNotifiedAt: isImmediate ? new Date() : null,
     },
     include: rideInclude,
   });
+}
+
+export function isRideVisibleToDrivers(ride: {
+  scheduledAt: Date | null;
+}): boolean {
+  if (!ride.scheduledAt) return true;
+  return ride.scheduledAt.getTime() <= Date.now();
 }
 
 export async function getRideById(rideId: string) {
@@ -73,11 +103,36 @@ export async function getActiveRideForUser(userId: string, role: Role) {
   });
 }
 
-export async function getPendingRidesForDrivers() {
+export async function getPendingRidesForDrivers(driverId: string) {
+  const now = new Date();
   return prisma.ride.findMany({
-    where: { status: RideStatus.REQUESTED },
+    where: {
+      status: RideStatus.REQUESTED,
+      rejections: { none: { driverId } },
+      OR: [{ scheduledAt: null }, { scheduledAt: { lte: now } }],
+    },
     include: rideInclude,
-    orderBy: { requestedAt: "desc" },
+    orderBy: [{ scheduledAt: "asc" }, { requestedAt: "desc" }],
+  });
+}
+
+export async function activateDueScheduledRides() {
+  const now = new Date();
+  return prisma.ride.findMany({
+    where: {
+      status: RideStatus.REQUESTED,
+      scheduledAt: { not: null, lte: now },
+      driversNotifiedAt: null,
+    },
+    include: rideInclude,
+  });
+}
+
+export async function markDriversNotified(rideId: string) {
+  return prisma.ride.update({
+    where: { id: rideId },
+    data: { driversNotifiedAt: new Date() },
+    include: rideInclude,
   });
 }
 
@@ -121,7 +176,22 @@ export async function acceptRide(rideId: string, driverId: string) {
   return getRideById(rideId);
 }
 
-export async function rejectRide(_rideId: string, _driverId: string) {
+export async function rejectRide(rideId: string, driverId: string) {
+  const ride = await prisma.ride.findUnique({ where: { id: rideId } });
+  if (!ride) throw new Error("NOT_FOUND");
+  if (ride.status !== RideStatus.REQUESTED) throw new Error("INVALID_STATE");
+
+  const driverProfile = await prisma.driverProfile.findUnique({
+    where: { userId: driverId },
+  });
+  if (!driverProfile?.isOnline) throw new Error("DRIVER_OFFLINE");
+
+  await prisma.rideRejection.upsert({
+    where: { rideId_driverId: { rideId, driverId } },
+    create: { rideId, driverId },
+    update: {},
+  });
+
   return { success: true };
 }
 

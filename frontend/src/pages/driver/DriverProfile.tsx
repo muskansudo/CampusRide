@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { UserAvatar } from '@/components/ui/UserAvatar';
 import { Divider } from '@/components/ui/Divider';
+import { NotificationSettings } from '@/components/settings/NotificationSettings';
 
 const verificationColors: Record<string, string> = {
   VERIFIED: 'bg-primary-fixed/50 text-primary',
@@ -28,21 +29,37 @@ function InfoRow({ label, value }: { label: string; value: string | null }) {
 export function DriverProfile() {
   const user = useAuthStore((s) => s.user);
   const updateProfile = useAuthStore((s) => s.updateProfile);
+  const updateVehicle = useAuthStore((s) => s.updateVehicle);
+  const submitVerification = useAuthStore((s) => s.submitVerification);
   const logout = useAuthStore((s) => s.logout);
   const navigate = useNavigate();
   const addToast = useToastStore((s) => s.addToast);
 
   const [name, setName] = useState(user?.name ?? '');
   const [phone, setPhone] = useState(user?.phone ?? '');
+  const [vehicleType, setVehicleType] = useState(user?.driverProfile?.vehicleType ?? '');
+  const [vehicleNumber, setVehicleNumber] = useState(user?.driverProfile?.vehicleNumber ?? '');
+  const [licenseNumber, setLicenseNumber] = useState(user?.driverProfile?.licenseNumber ?? '');
+  const [governmentIdNumber, setGovernmentIdNumber] = useState(
+    user?.driverProfile?.governmentIdNumber ?? ''
+  );
   const [saving, setSaving] = useState(false);
+  const [submittingVerification, setSubmittingVerification] = useState(false);
 
   const profile = user?.driverProfile;
   const verificationStatus = profile?.verificationStatus ?? 'PENDING';
+  const canSubmitVerification =
+    verificationStatus !== 'VERIFIED' &&
+    !(verificationStatus === 'PENDING' && profile?.verificationSubmittedAt);
 
   const handleSave = async () => {
     setSaving(true);
     try {
       await updateProfile({ name, phone: phone || undefined });
+      await updateVehicle({
+        vehicleType: vehicleType || undefined,
+        vehicleNumber: vehicleNumber || undefined,
+      });
       addToast('success', 'Profile updated');
     } catch (err) {
       addToast('error', err instanceof Error ? err.message : 'Failed to update profile');
@@ -51,8 +68,27 @@ export function DriverProfile() {
     }
   };
 
-  const handleLogout = () => {
-    logout();
+  const handleSubmitVerification = async () => {
+    if (!licenseNumber.trim() || !governmentIdNumber.trim()) {
+      addToast('error', 'License number and government ID are required');
+      return;
+    }
+    setSubmittingVerification(true);
+    try {
+      await submitVerification({
+        licenseNumber: licenseNumber.trim(),
+        governmentIdNumber: governmentIdNumber.trim(),
+      });
+      addToast('success', 'Verification submitted for review');
+    } catch (err) {
+      addToast('error', err instanceof Error ? err.message : 'Failed to submit verification');
+    } finally {
+      setSubmittingVerification(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    await logout();
     navigate('/login');
   };
 
@@ -87,19 +123,73 @@ export function DriverProfile() {
       {profile && (
         <Card noPadding>
           <div className="px-5 py-4">
-            <p className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant">
+            <p className="mb-2 text-[14px] font-semibold uppercase tracking-widest text-on-surface-variant">
               Vehicle Info
             </p>
             <InfoRow label="Type" value={profile.vehicleType} />
             <Divider />
             <InfoRow label="Number" value={profile.vehicleNumber} />
-            {profile.licenseInfo && (
-              <>
-                <Divider />
-                <InfoRow label="License" value={profile.licenseInfo} />
-              </>
-            )}
           </div>
+        </Card>
+      )}
+
+      {profile && (
+        <Card>
+          <p className="mb-2 text-[14px] font-semibold uppercase tracking-widest text-on-surface-variant">
+            Driver Verification
+          </p>
+          {verificationStatus === 'VERIFIED' ? (
+            <p className="text-sm text-on-surface-variant">
+              Your account is verified. You can go online and accept rides.
+            </p>
+          ) : verificationStatus === 'PENDING' && profile.verificationSubmittedAt ? (
+            <p className="text-sm text-on-surface-variant">
+              Your documents are under review. You will be notified once an admin approves your
+              account.
+            </p>
+          ) : (
+            <>
+              {verificationStatus === 'REJECTED' && profile.verificationRejectionReason && (
+                <p className="mb-3 rounded-2xl bg-red-500/10 px-4 py-3 text-sm text-red-400">
+                  Rejected: {profile.verificationRejectionReason}
+                </p>
+              )}
+              <p className="mb-4 text-sm text-on-surface-variant">
+                Submit your license and government ID to get verified before going online.
+              </p>
+              <div className="space-y-3">
+                <Input
+                  label="Driver License Number"
+                  value={licenseNumber}
+                  onChange={(e) => setLicenseNumber(e.target.value)}
+                  placeholder="e.g. DL-123456"
+                />
+                <Input
+                  label="Government ID Number"
+                  value={governmentIdNumber}
+                  onChange={(e) => setGovernmentIdNumber(e.target.value)}
+                  placeholder="Aadhaar or university ID"
+                />
+              </div>
+              {canSubmitVerification && (
+                <Button
+                  className="mt-4 w-full"
+                  onClick={handleSubmitVerification}
+                  loading={submittingVerification}
+                  disabled={submittingVerification}
+                >
+                  Submit for Verification
+                </Button>
+              )}
+            </>
+          )}
+          {profile.licenseNumber && (
+            <div className="mt-4 border-t border-glass-border pt-4">
+              <InfoRow label="License number" value={profile.licenseNumber} />
+              <Divider />
+              <InfoRow label="Government ID" value={profile.governmentIdNumber} />
+            </div>
+          )}
         </Card>
       )}
 
@@ -119,6 +209,16 @@ export function DriverProfile() {
             onChange={(e) => setPhone(e.target.value)}
             placeholder="Optional"
           />
+          <Input
+            label="Vehicle Type"
+            value={vehicleType}
+            onChange={(e) => setVehicleType(e.target.value)}
+          />
+          <Input
+            label="Vehicle Number"
+            value={vehicleNumber}
+            onChange={(e) => setVehicleNumber(e.target.value)}
+          />
         </div>
         <Button
           className="mt-4 w-full"
@@ -129,6 +229,8 @@ export function DriverProfile() {
           Save Changes
         </Button>
       </Card>
+
+      <NotificationSettings />
 
       <Card noPadding>
         <button

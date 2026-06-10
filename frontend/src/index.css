@@ -173,6 +173,22 @@
     box-shadow: 0 4px 24px rgba(255, 181, 160, 0.45);
   }
 
+  .refresh-btn-glow {
+    transition:
+      box-shadow 0.2s ease,
+      transform 0.15s ease,
+      background-color 0.2s ease;
+  }
+
+  .refresh-btn-glow:active:not(:disabled),
+  .refresh-btn-glow.is-refreshing {
+    box-shadow:
+      0 0 0 3px rgba(255, 181, 160, 0.55),
+      0 0 20px rgba(139, 78, 60, 0.5),
+      0 0 36px rgba(255, 181, 160, 0.35);
+    transform: scale(0.94);
+  }
+
   .bottom-sheet {
     background: rgba(255, 255, 255, 0.4);
     backdrop-filter: blur(32px);

@@ -1,8 +1,14 @@
 import { Router } from "express";
 import { z } from "zod";
 import { Role } from "@prisma/client";
-import { registerUser, loginUser, getUserById, updateUserProfile } from "../services/auth.service.js";
+import {
+  registerUser,
+  loginUser,
+  getUserById,
+  updateUserProfile,
+} from "../services/auth.service.js";
 import { authenticate, type AuthRequest } from "../middleware/auth.js";
+import { establishSession, SESSION_COOKIE_NAME } from "../config/session.js";
 
 const router = Router();
 
@@ -11,10 +17,9 @@ const registerSchema = z.object({
   password: z.string().min(6),
   name: z.string().min(2),
   phone: z.string().optional(),
-  role: z.nativeEnum(Role),
+  role: z.enum([Role.PASSENGER, Role.DRIVER]),
   vehicleType: z.string().optional(),
   vehicleNumber: z.string().optional(),
-  licenseInfo: z.string().optional(),
 });
 
 const loginSchema = z.object({
@@ -26,6 +31,11 @@ router.post("/register", async (req, res, next) => {
   try {
     const data = registerSchema.parse(req.body);
     const result = await registerUser(data);
+    establishSession(req, {
+      id: result.user.id,
+      email: result.user.email,
+      role: result.user.role,
+    });
     res.status(201).json(result);
   } catch (err) {
     if (err instanceof Error && err.message === "EMAIL_EXISTS") {
@@ -39,6 +49,11 @@ router.post("/login", async (req, res, next) => {
   try {
     const data = loginSchema.parse(req.body);
     const result = await loginUser(data.email, data.password);
+    establishSession(req, {
+      id: result.user.id,
+      email: result.user.email,
+      role: result.user.role,
+    });
     res.json(result);
   } catch (err) {
     if (err instanceof Error && err.message === "INVALID_CREDENTIALS") {
@@ -46,6 +61,16 @@ router.post("/login", async (req, res, next) => {
     }
     next(err);
   }
+});
+
+router.post("/logout", (req, res) => {
+  req.session.destroy((err) => {
+    if (err) {
+      return res.status(500).json({ error: "Logout failed" });
+    }
+    res.clearCookie(SESSION_COOKIE_NAME);
+    res.json({ ok: true });
+  });
 });
 
 router.get("/me", authenticate, async (req: AuthRequest, res, next) => {

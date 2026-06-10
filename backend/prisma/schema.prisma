@@ -10,6 +10,7 @@ datasource db {
 enum Role {
   PASSENGER
   DRIVER
+  ADMIN
 }
 
 enum RideStatus {
@@ -39,8 +40,9 @@ model User {
   driverProfile    DriverProfile?
   passengerRides   Ride[]         @relation("PassengerRides")
   driverRides      Ride[]         @relation("DriverRides")
-  ratingsGiven     Rating[]       @relation("RatingsGiven")
-  ratingsReceived  Rating[]       @relation("RatingsReceived")
+  ratingsGiven     Rating[]         @relation("RatingsGiven")
+  ratingsReceived  Rating[]         @relation("RatingsReceived")
+  rideRejections   RideRejection[]
 
   @@map("users")
 }
@@ -50,8 +52,11 @@ model DriverProfile {
   userId             String             @unique @map("user_id")
   vehicleType        String             @map("vehicle_type")
   vehicleNumber      String             @map("vehicle_number")
-  licenseInfo        String?            @map("license_info")
-  verificationStatus VerificationStatus @default(PENDING) @map("verification_status")
+  licenseNumber              String?            @map("license_number")
+  governmentIdNumber         String?            @map("government_id_number")
+  verificationRejectionReason String?           @map("verification_rejection_reason")
+  verificationSubmittedAt    DateTime?          @map("verification_submitted_at")
+  verificationStatus         VerificationStatus @default(PENDING) @map("verification_status")
   isOnline           Boolean            @default(false) @map("is_online")
   currentLat         Float?             @map("current_lat")
   currentLng         Float?             @map("current_lng")
@@ -76,17 +81,21 @@ model Ride {
   status              RideStatus @default(REQUESTED)
   cancelReason        String?    @map("cancel_reason")
   cancelledBy         String?    @map("cancelled_by")
+  scheduledAt         DateTime?  @map("scheduled_at")
+  driversNotifiedAt   DateTime?  @map("drivers_notified_at")
   requestedAt         DateTime   @default(now()) @map("requested_at")
   acceptedAt          DateTime?  @map("accepted_at")
   startedAt           DateTime?  @map("started_at")
   completedAt         DateTime?  @map("completed_at")
   cancelledAt         DateTime?  @map("cancelled_at")
 
-  passenger User    @relation("PassengerRides", fields: [passengerId], references: [id])
-  driver    User?   @relation("DriverRides", fields: [driverId], references: [id])
-  rating    Rating?
+  passenger  User            @relation("PassengerRides", fields: [passengerId], references: [id])
+  driver     User?           @relation("DriverRides", fields: [driverId], references: [id])
+  rating     Rating?
+  rejections RideRejection[]
 
   @@index([status, requestedAt])
+  @@index([status, scheduledAt])
   @@index([driverId, status])
   @@index([passengerId, status])
   @@map("rides")
@@ -106,4 +115,17 @@ model Rating {
   driver    User @relation("RatingsReceived", fields: [driverId], references: [id])
 
   @@map("ratings")
+}
+
+model RideRejection {
+  id         String   @id @default(cuid())
+  rideId     String   @map("ride_id")
+  driverId   String   @map("driver_id")
+  rejectedAt DateTime @default(now()) @map("rejected_at")
+
+  ride   Ride @relation(fields: [rideId], references: [id], onDelete: Cascade)
+  driver User @relation(fields: [driverId], references: [id], onDelete: Cascade)
+
+  @@unique([rideId, driverId])
+  @@map("ride_rejections")
 }

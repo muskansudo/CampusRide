@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
-import { MapPin, RefreshCw } from 'lucide-react';
+import { MapPin } from 'lucide-react';
+import { RefreshButton } from '@/components/ui/RefreshButton';
 import { api } from '@/lib/api';
 import type { Ride } from '@/types';
 import { Card } from '@/components/ui/Card';
 import { StatusChip } from '@/components/ui/StatusChip';
 import { Divider } from '@/components/ui/Divider';
+import { getCancelledByLabel } from '@/lib/rideUtils';
 
 function formatRideDate(dateStr: string) {
   const d = new Date(dateStr);
@@ -44,15 +46,7 @@ export function PassengerHistory() {
           <h2 className="font-display text-3xl text-on-surface">Ride History</h2>
           <p className="mt-1 text-sm text-on-surface-variant">Your past campus rides</p>
         </div>
-        <button
-          type="button"
-          onClick={onRefresh}
-          disabled={refreshing}
-          className="flex h-10 w-10 items-center justify-center rounded-full glass text-primary transition hover:bg-white/50 disabled:opacity-50"
-          aria-label="Refresh"
-        >
-          <RefreshCw className={['h-4 w-4', refreshing ? 'animate-spin' : ''].join(' ')} />
-        </button>
+        <RefreshButton onClick={onRefresh} refreshing={refreshing} />
       </div>
 
       {loading ? (
@@ -70,6 +64,7 @@ export function PassengerHistory() {
         <Card noPadding>
           {rides.map((ride, i) => {
             const { day, month } = formatRideDate(ride.requestedAt);
+            const cancelledByLabel = getCancelledByLabel(ride);
             return (
               <div key={ride.id}>
                 {i > 0 && <Divider />}
@@ -91,8 +86,15 @@ export function PassengerHistory() {
                       {ride.driver?.name || 'No driver'}
                       {ride.rating && ` · ${ride.rating.rating}/5 ★`}
                     </p>
+                    {cancelledByLabel && (
+                      <p className="mt-1 text-[11px] font-semibold text-error">
+                        {cancelledByLabel}
+                      </p>
+                    )}
                   </div>
-                  <StatusChip status={ride.status} />
+                  <div className="flex shrink-0 flex-col items-end gap-1">
+                    <StatusChip status={ride.status} />
+                  </div>
                 </div>
               </div>
             );

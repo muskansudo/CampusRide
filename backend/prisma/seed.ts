@@ -31,17 +31,46 @@ async function main() {
         create: {
           vehicleType: "E-Rickshaw",
           vehicleNumber: "UK-01-AB-1234",
-          licenseInfo: "DL-123456",
+          licenseNumber: "DL-123456",
+          governmentIdNumber: "GOV-987654",
           verificationStatus: "VERIFIED",
+          verificationSubmittedAt: new Date(),
           isOnline: false,
         },
       },
     },
   });
 
+  await prisma.user.upsert({
+    where: { email: "admin@test.com" },
+    update: {},
+    create: {
+      email: "admin@test.com",
+      passwordHash,
+      name: "Campus Admin",
+      phone: "9876543212",
+      role: Role.ADMIN,
+    },
+  });
+
+  // Keep demo driver verified with verification fields on re-seed
+  await prisma.driverProfile.updateMany({
+    where: { user: { email: "driver@test.com" } },
+    data: {
+      licenseNumber: "DL-123456",
+      governmentIdNumber: "GOV-987654",
+      verificationStatus: "VERIFIED",
+      verificationSubmittedAt: new Date(),
+    },
+  });
+
   console.log("Seed data created:");
-  console.log({ passenger: passenger.email, driver: driver.email });
-  console.log("Password for both: password123");
+  console.log({
+    passenger: passenger.email,
+    driver: driver.email,
+    admin: "admin@test.com",
+  });
+  console.log("Password for all: password123");
 }
 
 main()

@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { useAuthStore } from '@/store/authStore';
 import { ToastContainer } from '@/components/ui/Toast';
@@ -13,20 +13,27 @@ import { DriverDashboard } from '@/pages/driver/DriverDashboard';
 import { DriverRequests } from '@/pages/driver/DriverRequests';
 import { DriverAnalytics } from '@/pages/driver/DriverAnalytics';
 import { DriverProfile } from '@/pages/driver/DriverProfile';
+import { AdminVerifications } from '@/pages/admin/AdminVerifications';
+
+function homePathForRole(role: string) {
+  if (role === 'ADMIN') return '/admin';
+  if (role === 'DRIVER') return '/driver';
+  return '/passenger';
+}
 
 function ProtectedRoute({
   children,
   role,
 }: {
   children: React.ReactNode;
-  role?: 'PASSENGER' | 'DRIVER';
+  role?: 'PASSENGER' | 'DRIVER' | 'ADMIN';
 }) {
   const { user, loading } = useAuthStore();
 
   if (loading) return <SplashScreen />;
   if (!user) return <Navigate to="/login" replace />;
   if (role && user.role !== role) {
-    return <Navigate to={user.role === 'DRIVER' ? '/driver' : '/passenger'} replace />;
+    return <Navigate to={homePathForRole(user.role)} replace />;
   }
   return children;
 }
@@ -36,24 +43,41 @@ function RootRedirect() {
 
   if (loading) return <SplashScreen />;
   if (!user) return <Navigate to="/login" replace />;
-  return <Navigate to={user.role === 'DRIVER' ? '/driver' : '/passenger'} replace />;
+  return <Navigate to={homePathForRole(user.role)} replace />;
 }
 
 function AuthRedirect({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuthStore();
   if (loading) return <SplashScreen />;
   if (user) {
-    return <Navigate to={user.role === 'DRIVER' ? '/driver' : '/passenger'} replace />;
+    return <Navigate to={homePathForRole(user.role)} replace />;
   }
   return children;
 }
 
+const SPLASH_MIN_MS = 3500;
+
 export default function App() {
   const loadUser = useAuthStore((s) => s.loadUser);
+  const authLoading = useAuthStore((s) => s.loading);
+  const [splashMinElapsed, setSplashMinElapsed] = useState(false);
 
   useEffect(() => {
     loadUser();
+    const timer = setTimeout(() => setSplashMinElapsed(true), SPLASH_MIN_MS);
+    return () => clearTimeout(timer);
   }, [loadUser]);
+
+  const bootstrapping = authLoading || !splashMinElapsed;
+
+  if (bootstrapping) {
+    return (
+      <>
+        <ToastContainer />
+        <SplashScreen />
+      </>
+    );
+  }
 
   return (
     <>
@@ -102,6 +126,14 @@ export default function App() {
           <Route path="analytics" element={<DriverAnalytics />} />
           <Route path="profile" element={<DriverProfile />} />
         </Route>
+        <Route
+          path="/admin"
+          element={
+            <ProtectedRoute role="ADMIN">
+              <AdminVerifications />
+            </ProtectedRoute>
+          }
+        />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>

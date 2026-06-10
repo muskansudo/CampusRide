@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Car, RefreshCw, Star, TrendingUp } from 'lucide-react';
+import { Car, Star, TrendingUp } from 'lucide-react';
+import { RefreshButton } from '@/components/ui/RefreshButton';
 import { api } from '@/lib/api';
 import { getSocket } from '@/lib/socket';
 import { useAuthStore } from '@/store/authStore';
@@ -9,12 +10,49 @@ import { Card } from '@/components/ui/Card';
 import { RideCard } from '@/components/ride/RideCard';
 import { Divider } from '@/components/ui/Divider';
 import { MapView, type MapMarker } from '@/components/ui/MapView';
+import { rideEndpoints } from '@/lib/route';
+import { useRideRoute } from '@/hooks/useRideRoute';
 
 const DEFAULT_CENTER: [number, number] = [29.8659, 77.8974];
 
+function buildDriverMapMarkers(
+  activeRides: DashboardData['activeRides'],
+  driverCoords: [number, number] | null
+): MapMarker[] {
+  const markers: MapMarker[] = [];
+
+  if (driverCoords) {
+    markers.push({ position: driverCoords, type: 'driver', label: 'You' });
+  }
+
+  for (const ride of activeRides) {
+    if (ride.pickupLat != null && ride.pickupLng != null) {
+      markers.push({
+        position: [ride.pickupLat, ride.pickupLng],
+        type: 'pickup',
+        label: ride.pickupLocation,
+      });
+    }
+    if (ride.destLat != null && ride.destLng != null) {
+      markers.push({
+        position: [ride.destLat, ride.destLng],
+        type: 'destination',
+        label: ride.destinationLocation,
+      });
+    }
+  }
+
+  return markers;
+}
+
 export function DriverDashboard() {
   const user = useAuthStore((s) => s.user);
+  const refreshUser = useAuthStore((s) => s.refreshUser);
   const addToast = useToastStore((s) => s.addToast);
+  const isVerified = user?.driverProfile?.verificationStatus === 'VERIFIED';
+  const verificationPending =
+    user?.driverProfile?.verificationStatus === 'PENDING' &&
+    !!user?.driverProfile?.verificationSubmittedAt;
   const [dashboard, setDashboard] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -94,6 +132,15 @@ export function DriverDashboard() {
 
   const toggleOnline = async () => {
     if (!dashboard) return;
+    if (!dashboard.isOnline && !isVerified) {
+      addToast(
+        'error',
+        verificationPending
+          ? 'Verification is pending admin approval'
+          : 'Complete driver verification on your profile before going online'
+      );
+      return;
+    }
     setActionLoading(true);
     try {
       const newStatus = !dashboard.isOnline;
@@ -124,11 +171,21 @@ export function DriverDashboard() {
   const onRefresh = async () => {
     setRefreshing(true);
     try {
-      await loadDashboard();
+      await Promise.all([loadDashboard(), refreshUser()]);
+    } catch (err) {
+      addToast('error', err instanceof Error ? err.message : 'Failed to refresh');
     } finally {
       setRefreshing(false);
     }
   };
+
+  const inProgressRide = dashboard?.activeRides.find((r) => r.status === 'IN_PROGRESS');
+  const routeEndpoints = inProgressRide ? rideEndpoints(inProgressRide) : null;
+  const routePath = useRideRoute(
+    routeEndpoints?.pickup ?? null,
+    routeEndpoints?.destination ?? null,
+    !!inProgressRide
+  );
 
   if (loading || !dashboard) {
     return (
@@ -152,21 +209,26 @@ export function DriverDashboard() {
             {dashboard.vehicleType} · {dashboard.vehicleNumber}
           </p>
         </div>
-        <button
-          type="button"
-          onClick={onRefresh}
-          disabled={refreshing}
-          className="flex h-10 w-10 items-center justify-center rounded-full glass text-primary transition hover:bg-white/50 disabled:opacity-50"
-          aria-label="Refresh"
-        >
-          <RefreshCw className={['h-4 w-4', refreshing ? 'animate-spin' : ''].join(' ')} />
-        </button>
+        <RefreshButton onClick={onRefresh} refreshing={refreshing} />
       </div>
+
+      {!isVerified && (
+        <Card className="mb-4 border-yellow-500/20 bg-yellow-500/10">
+          <p className="text-sm font-semibold text-yellow-600">
+            {verificationPending ? 'Verification pending' : 'Verification required'}
+          </p>
+          <p className="mt-1 text-sm text-on-surface-variant">
+            {verificationPending
+              ? 'An admin is reviewing your documents. You cannot go online until approved.'
+              : 'Submit your license and government ID on your profile to go online.'}
+          </p>
+        </Card>
+      )}
 
       <button
         type="button"
         onClick={toggleOnline}
-        disabled={actionLoading}
+        disabled={actionLoading || (!dashboard.isOnline && !isVerified)}
         className={[
           'mb-6 flex w-full items-center justify-between rounded-3xl border px-6 py-4 transition disabled:opacity-50',
           dashboard.isOnline ? 'glass-live border-tertiary/30' : 'glass border-glass-border',
@@ -199,6 +261,48 @@ export function DriverDashboard() {
           />
         </span>
       </button>
+
+      {(dashboard.isOnline || dashboard.activeRides.length > 0) && (
+        <div className="mb-6">
+          <p className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant">
+            {inProgressRide ? 'Your route' : dashboard.activeRides.length > 0 ? 'Pickup & destination' : 'Your location'}
+          </p>
+          <Card noPadding className="overflow-hidden">
+            <MapView
+              center={driverCoords ?? DEFAULT_CENTER}
+              zoom={15}
+              markers={buildDriverMapMarkers(dashboard.activeRides, driverCoords)}
+              route={routePath}
+              className="h-52 w-full"
+            />
+          </Card>
+        </div>
+      )}
+
+      {dashboard.activeRides.length > 0 && (
+        <div className="mb-6">
+          <div className="mb-4 flex items-center justify-between">
+            <h3 className="font-display text-2xl">Active Rides</h3>
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-tertiary-container/20 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-tertiary">
+              <span className="h-2 w-2 rounded-full bg-tertiary live-pulse-tertiary" />
+              Live
+            </span>
+          </div>
+          <div className="space-y-4">
+            {dashboard.activeRides.map((ride) => (
+              <RideCard
+                key={ride.id}
+                ride={ride}
+                role="driver"
+                onStart={() => handleRideAction('start', ride.id)}
+                onComplete={() => handleRideAction('complete', ride.id)}
+                onCancel={() => handleRideAction('cancel', ride.id)}
+                loading={actionLoading}
+              />
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-2 gap-3">
         <Card variant="deep" className="col-span-2 !p-5">
@@ -239,57 +343,6 @@ export function DriverDashboard() {
           </p>
         </Card>
       </div>
-
-      {/* Live map: shown when online or has active ride */}
-      {(dashboard.isOnline || dashboard.activeRides.length > 0) && (
-        <div className="mt-6">
-          <p className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant">
-            {dashboard.isOnline ? 'Your Location' : 'Pickup Location'}
-          </p>
-          <Card noPadding className="overflow-hidden">
-            <MapView
-              center={driverCoords ?? DEFAULT_CENTER}
-              zoom={15}
-              markers={[
-                ...(driverCoords ? [{ position: driverCoords, type: 'driver' as const, label: 'You' }] : []),
-                ...dashboard.activeRides
-                  .filter((r) => r.pickupLat && r.pickupLng)
-                  .map((r) => ({
-                    position: [r.pickupLat!, r.pickupLng!] as [number, number],
-                    type: 'pickup' as const,
-                    label: r.pickupLocation,
-                  })),
-              ]}
-              className="h-48 w-full"
-            />
-          </Card>
-        </div>
-      )}
-
-      {dashboard.activeRides.length > 0 && (
-        <div className="mt-8">
-          <div className="mb-4 flex items-center justify-between">
-            <h3 className="font-display text-2xl">Active Rides</h3>
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-tertiary-container/20 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-tertiary">
-              <span className="h-2 w-2 rounded-full bg-tertiary live-pulse-tertiary" />
-              Live
-            </span>
-          </div>
-          <div className="space-y-4">
-            {dashboard.activeRides.map((ride) => (
-              <RideCard
-                key={ride.id}
-                ride={ride}
-                role="driver"
-                onStart={() => handleRideAction('start', ride.id)}
-                onComplete={() => handleRideAction('complete', ride.id)}
-                onCancel={() => handleRideAction('cancel', ride.id)}
-                loading={actionLoading}
-              />
-            ))}
-          </div>
-        </div>
-      )}
 
       {dashboard.recentRatings.length > 0 && (
         <div className="mt-8">

@@ -1,4 +1,4 @@
-import { MapPin, Navigation } from 'lucide-react';
+import { CalendarClock, MapPin, Navigation } from 'lucide-react';
 import type { Ride } from '@/types';
 import { Card } from '@/components/ui/Card';
 import { StatusChip } from '@/components/ui/StatusChip';
@@ -30,6 +30,19 @@ export function RideCard({
   loading,
 }: RideCardProps) {
   const isLive = ['ACCEPTED', 'IN_PROGRESS'].includes(ride.status);
+  const isScheduledFuture =
+    !!ride.scheduledAt &&
+    ride.status === 'REQUESTED' &&
+    new Date(ride.scheduledAt).getTime() > Date.now();
+  const scheduledLabel = ride.scheduledAt
+    ? new Date(ride.scheduledAt).toLocaleString(undefined, {
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+      })
+    : null;
   const displayName =
     role === 'driver' ? ride.passenger.name : ride.driver?.name || 'Finding driver...';
   const vehicleInfo =
@@ -104,6 +117,24 @@ export function RideCard({
             </div>
           </div>
           <StatusChip status={ride.status} />
+        </div>
+      )}
+
+      {isScheduledFuture && scheduledLabel && (
+        <div className="mb-4 flex items-start gap-2 rounded-2xl border border-primary/30 bg-primary-fixed/25 px-3 py-2.5 text-xs text-on-surface">
+          <CalendarClock className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+          <p>
+            <span className="font-semibold">Scheduled for {scheduledLabel}</span>
+            {role === 'passenger'
+              ? '. Drivers will be notified when it is time.'
+              : '. Passenger booked this slot in advance.'}
+          </p>
+        </div>
+      )}
+
+      {ride.scheduledAt && !isScheduledFuture && ride.status === 'REQUESTED' && scheduledLabel && (
+        <div className="mb-4 rounded-2xl border border-white/30 bg-white/20 px-3 py-2 text-[11px] text-on-surface-variant">
+          Originally scheduled: {scheduledLabel}
         </div>
       )}
 

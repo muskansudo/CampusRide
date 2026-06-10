@@ -1,36 +1,65 @@
 import type { Server as HttpServer } from "http";
+import type { Request } from "express";
+import type { IncomingMessage } from "http";
 import { Server as SocketServer } from "socket.io";
-import jwt from "jsonwebtoken";
-import type { JwtPayload } from "../utils/jwt.js";
+import type { Role } from "@prisma/client";
+import type { RequestHandler } from "express";
 import { emitDriverStatus } from "./events.js";
 import { updateDriverStatus } from "../services/driver.service.js";
 
-const JWT_SECRET = process.env.JWT_SECRET || "dev-secret-change-me";
+type SocketSessionRequest = IncomingMessage & {
+  session?: {
+    userId?: string;
+    email?: string;
+    role?: Role;
+  };
+};
 
-export function initSocketServer(httpServer: HttpServer): SocketServer {
+function wrapSessionMiddleware(middleware: RequestHandler) {
+  return (socket: { request: SocketSessionRequest }, next: (err?: Error) => void) => {
+    middleware(socket.request as Request, {} as import("express").Response, next as NextFunction);
+  };
+}
+
+type NextFunction = (err?: unknown) => void;
+
+export function initSocketServer(
+  httpServer: HttpServer,
+  sessionMiddleware: RequestHandler
+): SocketServer {
+  const clientOrigins = process.env.CLIENT_URL
+    ? process.env.CLIENT_URL.split(",").map((o) => o.trim())
+    : ["http://localhost:5173"];
+
   const io = new SocketServer(httpServer, {
     cors: {
-      origin: process.env.CLIENT_URL || "http://localhost:5173",
+      origin: clientOrigins,
       methods: ["GET", "POST"],
+      credentials: true,
     },
   });
 
+  io.use(wrapSessionMiddleware(sessionMiddleware));
+
   io.use((socket, next) => {
-    const token = socket.handshake.auth.token as string | undefined;
-    if (!token) {
+    const session = (socket.request as SocketSessionRequest).session;
+    if (!session?.userId || !session.role || !session.email) {
       return next(new Error("Authentication required"));
     }
-    try {
-      const payload = jwt.verify(token, JWT_SECRET) as JwtPayload;
-      socket.data.user = payload;
-      next();
-    } catch {
-      next(new Error("Invalid token"));
-    }
+    socket.data.user = {
+      userId: session.userId,
+      email: session.email,
+      role: session.role,
+    };
+    next();
   });
 
   io.on("connection", (socket) => {
-    const user = socket.data.user as JwtPayload;
+    const user = socket.data.user as {
+      userId: string;
+      email: string;
+      role: Role;
+    };
     socket.join(`user:${user.userId}`);
 
     if (user.role === "DRIVER") {

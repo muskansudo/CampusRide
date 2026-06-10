@@ -2,42 +2,58 @@ import { create } from 'zustand';
 import type { User } from '../types';
 import { api } from '../lib/api';
 import { connectSocket, disconnectSocket } from '../lib/socket';
-import { getToken, removeToken, setToken } from '../lib/api';
 
 interface AuthState {
   user: User | null;
-  token: string | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (data: Record<string, unknown>) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
   loadUser: () => Promise<void>;
+  refreshUser: () => Promise<void>;
   updateProfile: (data: { name?: string; phone?: string }) => Promise<void>;
+  updateVehicle: (data: {
+    vehicleType?: string;
+    vehicleNumber?: string;
+  }) => Promise<void>;
+  submitVerification: (data: {
+    licenseNumber: string;
+    governmentIdNumber: string;
+  }) => Promise<void>;
 }
 
 export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
-  token: null,
   loading: true,
 
   login: async (email, password) => {
-    const { user, token } = await api.login(email, password);
-    setToken(token);
-    connectSocket(token);
-    set({ user, token });
+    const { user } = await api.login(email, password);
+    connectSocket();
+    set({ user });
   },
 
   register: async (data) => {
-    const { user, token } = await api.register(data);
-    setToken(token);
-    connectSocket(token);
-    set({ user, token });
+    const { user } = await api.register(data);
+    connectSocket();
+    set({ user });
   },
 
-  logout: () => {
-    removeToken();
+  logout: async () => {
+    const user = get().user;
+    if (user?.role === 'DRIVER' && user.driverProfile?.isOnline) {
+      try {
+        await api.updateDriverStatus(false);
+      } catch {
+        // Best-effort offline before clearing session
+      }
+    }
+    try {
+      await api.logout();
+    } catch {
+      // Session may already be gone
+    }
     disconnectSocket();
-    set({ user: null, token: null });
+    set({ user: null });
   },
 
   updateProfile: async (data) => {
@@ -45,20 +61,50 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set({ user: { ...get().user!, ...updated } });
   },
 
+  updateVehicle: async (data) => {
+    const profile = await api.updateVehicle(data);
+    const user = get().user!;
+    set({
+      user: {
+        ...user,
+        driverProfile: user.driverProfile
+          ? { ...user.driverProfile, ...profile }
+          : {
+              ...profile,
+              verificationStatus: profile.verificationStatus ?? 'PENDING',
+              isOnline: profile.isOnline ?? false,
+            },
+      },
+    });
+  },
+
+  submitVerification: async (data) => {
+    const profile = await api.submitVerification(data);
+    const user = get().user!;
+    set({
+      user: {
+        ...user,
+        driverProfile: user.driverProfile
+          ? { ...user.driverProfile, ...profile }
+          : null,
+      },
+    });
+  },
+
   loadUser: async () => {
-    const token = getToken();
-    if (!token) {
-      set({ loading: false });
-      return;
-    }
+    localStorage.removeItem('token');
     try {
-      connectSocket(token);
       const user = await api.getMe();
-      set({ user, token, loading: false });
+      connectSocket();
+      set({ user, loading: false });
     } catch {
-      removeToken();
       disconnectSocket();
-      set({ user: null, token: null, loading: false });
+      set({ user: null, loading: false });
     }
+  },
+
+  refreshUser: async () => {
+    const user = await api.getMe();
+    set({ user });
   },
 }));

@@ -1,4 +1,4 @@
-export type Role = 'PASSENGER' | 'DRIVER';
+export type Role = 'PASSENGER' | 'DRIVER' | 'ADMIN';
 
 export type RideStatus =
   | 'REQUESTED'
@@ -11,9 +11,22 @@ export interface DriverProfile {
   id: string;
   vehicleType: string;
   vehicleNumber: string;
-  licenseInfo: string | null;
+  licenseNumber: string | null;
+  governmentIdNumber: string | null;
+  verificationRejectionReason: string | null;
+  verificationSubmittedAt: string | null;
   verificationStatus: string;
   isOnline: boolean;
+}
+
+export interface PendingVerification {
+  id: string;
+  licenseNumber: string | null;
+  governmentIdNumber: string | null;
+  verificationSubmittedAt: string | null;
+  vehicleType: string;
+  vehicleNumber: string;
+  user: { id: string; name: string; email: string; phone: string | null };
 }
 
 export interface User {
@@ -52,6 +65,10 @@ export interface Ride {
   destLng: number | null;
   status: RideStatus;
   cancelReason: string | null;
+  cancelledBy: string | null;
+  cancelledAt: string | null;
+  scheduledAt: string | null;
+  driversNotifiedAt: string | null;
   requestedAt: string;
   acceptedAt: string | null;
   startedAt: string | null;
@@ -99,9 +116,12 @@ export interface DriverAnalytics {
     id: string;
     date: string;
     passengerName: string;
+    passengerId: string;
+    driverId: string | null;
     pickupLocation: string;
     destinationLocation: string;
     status: RideStatus;
+    cancelledBy: string | null;
     rating: number | null;
   }>;
   recentRatings: Array<{
@@ -112,6 +132,10 @@ export interface DriverAnalytics {
     ride: { pickupLocation: string; destinationLocation: string };
   }>;
   fullHistory: Ride[];
+  peakHours: Array<{ hour: number; count: number }>;
+  pickupHotspots: Array<{ location: string; count: number }>;
+  destinationHotspots: Array<{ location: string; count: number }>;
+  campusDemandRideCount: number;
 }
 
 export interface Toast {

@@ -1,3 +1,4 @@
+import { VerificationStatus } from "@prisma/client";
 import { prisma } from "../utils/prisma.js";
 
 export async function updateDriverStatus(userId: string, isOnline: boolean) {
@@ -7,6 +8,10 @@ export async function updateDriverStatus(userId: string, isOnline: boolean) {
 
   if (!profile) {
     throw new Error("NOT_DRIVER");
+  }
+
+  if (isOnline && profile.verificationStatus !== VerificationStatus.VERIFIED) {
+    throw new Error("NOT_VERIFIED");
   }
 
   return prisma.driverProfile.update({
@@ -25,7 +30,6 @@ export async function updateVehicleInfo(
   data: {
     vehicleType?: string;
     vehicleNumber?: string;
-    licenseInfo?: string;
   }
 ) {
   return prisma.driverProfile.update({
@@ -65,6 +69,13 @@ export async function getDriverAnalytics(userId: string) {
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
   sevenDaysAgo.setHours(0, 0, 0, 0);
 
+  const campusDemandStatuses = [
+    "COMPLETED",
+    "IN_PROGRESS",
+    "ACCEPTED",
+    "REQUESTED",
+  ] as const;
+
   const [
     totalRidesCompleted,
     totalCancelled,
@@ -74,6 +85,7 @@ export async function getDriverAnalytics(userId: string) {
     activityRides,
     recentRatings,
     fullHistory,
+    platformDemandRides,
   ] = await Promise.all([
     prisma.ride.count({ where: { driverId: userId, status: "COMPLETED" } }),
     prisma.ride.count({ where: { driverId: userId, status: "CANCELLED" } }),
@@ -120,6 +132,15 @@ export async function getDriverAnalytics(userId: string) {
         rating: true,
       },
     }),
+    prisma.ride.findMany({
+      where: { status: { in: [...campusDemandStatuses] } },
+      select: {
+        requestedAt: true,
+        scheduledAt: true,
+        pickupLocation: true,
+        destinationLocation: true,
+      },
+    }),
   ]);
 
   const avgRating =
@@ -152,11 +173,46 @@ export async function getDriverAnalytics(userId: string) {
     id: ride.id,
     date: ride.requestedAt.toISOString(),
     passengerName: ride.passenger.name,
+    passengerId: ride.passengerId,
+    driverId: ride.driverId,
     pickupLocation: ride.pickupLocation,
     destinationLocation: ride.destinationLocation,
     status: ride.status,
+    cancelledBy: ride.cancelledBy,
     rating: ride.rating?.rating ?? null,
   }));
+
+  const hourBuckets = Array.from({ length: 24 }, (_, hour) => ({
+    hour,
+    count: 0,
+  }));
+  const pickupCounts = new Map<string, number>();
+  const destCounts = new Map<string, number>();
+
+  for (const ride of platformDemandRides) {
+    const demandAt = ride.scheduledAt ?? ride.requestedAt;
+    const hour = demandAt.getHours();
+    hourBuckets[hour].count++;
+
+    pickupCounts.set(
+      ride.pickupLocation,
+      (pickupCounts.get(ride.pickupLocation) ?? 0) + 1
+    );
+    destCounts.set(
+      ride.destinationLocation,
+      (destCounts.get(ride.destinationLocation) ?? 0) + 1
+    );
+  }
+
+  const toHotspots = (map: Map<string, number>) =>
+    [...map.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([location, count]) => ({ location, count }));
+
+  const peakHours = hourBuckets
+    .filter((h) => h.count > 0)
+    .sort((a, b) => b.count - a.count);
 
   return {
     totalRidesCompleted,
@@ -169,6 +225,10 @@ export async function getDriverAnalytics(userId: string) {
     activityLog,
     recentRatings,
     fullHistory,
+    peakHours,
+    pickupHotspots: toHotspots(pickupCounts),
+    destinationHotspots: toHotspots(destCounts),
+    campusDemandRideCount: platformDemandRides.length,
   };
 }
 

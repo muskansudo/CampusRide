@@ -1,6 +1,5 @@
 import type { Request, Response, NextFunction } from "express";
 import type { Role } from "@prisma/client";
-import { verifyToken } from "../utils/jwt.js";
 
 export interface AuthRequest extends Request {
   user?: {
@@ -15,18 +14,16 @@ export function authenticate(
   res: Response,
   next: NextFunction
 ) {
-  const header = req.headers.authorization;
-  if (!header?.startsWith("Bearer ")) {
+  if (!req.session?.userId || !req.session.role || !req.session.email) {
     return res.status(401).json({ error: "Authentication required" });
   }
 
-  try {
-    const token = header.slice(7);
-    req.user = verifyToken(token);
-    next();
-  } catch {
-    return res.status(401).json({ error: "Invalid or expired token" });
-  }
+  req.user = {
+    userId: req.session.userId,
+    email: req.session.email,
+    role: req.session.role,
+  };
+  next();
 }
 
 export function requireRole(...roles: Role[]) {

@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
-import { AlertCircle, BarChart2, Car, MapPin, RefreshCw, Star, TrendingUp } from 'lucide-react';
+import { AlertCircle, BarChart2, Car, MapPin, Star, TrendingUp } from 'lucide-react';
+import { RefreshButton } from '@/components/ui/RefreshButton';
 import { api } from '@/lib/api';
 import { useToastStore } from '@/store/toastStore';
 import type { DriverAnalytics as AnalyticsData } from '@/types';
 import { Card } from '@/components/ui/Card';
 import { StatusChip } from '@/components/ui/StatusChip';
 import { Divider } from '@/components/ui/Divider';
+import { getCancelledByLabel } from '@/lib/rideUtils';
 
 function formatDate(dateStr: string) {
   const d = new Date(dateStr);
@@ -13,6 +15,26 @@ function formatDate(dateStr: string) {
     day: d.getDate(),
     month: d.toLocaleString('en', { month: 'short' }),
   };
+}
+
+function HourBar({ hour, count, max }: { hour: number; count: number; max: number }) {
+  const pct = max > 0 ? (count / max) * 100 : 0;
+  const heightPx = Math.max(4, Math.round((pct / 100) * 80));
+  const label =
+    hour === 0 ? '12a' : hour < 12 ? `${hour}a` : hour === 12 ? '12p' : `${hour - 12}p`;
+
+  return (
+    <div className="flex flex-1 flex-col items-center gap-1">
+      <span className="text-[9px] text-on-surface-variant">{count > 0 ? count : ''}</span>
+      <div className="flex w-full items-end justify-center" style={{ height: 80 }}>
+        <div
+          className="w-full max-w-[20px] rounded-t-sm bg-tertiary/50 transition-all hover:bg-tertiary/70"
+          style={{ height: heightPx }}
+        />
+      </div>
+      <span className="text-[9px] font-medium text-on-surface-variant">{label}</span>
+    </div>
+  );
 }
 
 function DayBar({ date, count, max }: { date: string; count: number; max: number }) {
@@ -66,6 +88,13 @@ export function DriverAnalytics() {
     ? Math.max(...analytics.dailyRides.map((d) => d.count), 1)
     : 1;
 
+  const peakHours = analytics?.peakHours ?? [];
+  const maxHourCount = peakHours.length > 0 ? Math.max(...peakHours.map((h) => h.count), 1) : 1;
+  const allHours = Array.from({ length: 24 }, (_, hour) => ({
+    hour,
+    count: peakHours.find((h) => h.hour === hour)?.count ?? 0,
+  }));
+
   if (loading || !analytics) {
     return (
       <Card>
@@ -85,15 +114,7 @@ export function DriverAnalytics() {
           <h2 className="font-display text-3xl text-on-surface">Analytics</h2>
           <p className="mt-1 text-sm text-on-surface-variant">Your driving stats</p>
         </div>
-        <button
-          type="button"
-          onClick={onRefresh}
-          disabled={refreshing}
-          className="flex h-10 w-10 items-center justify-center rounded-full glass text-primary transition hover:bg-white/50 disabled:opacity-50"
-          aria-label="Refresh"
-        >
-          <RefreshCw className={['h-4 w-4', refreshing ? 'animate-spin' : ''].join(' ')} />
-        </button>
+        <RefreshButton onClick={onRefresh} refreshing={refreshing} />
       </div>
 
       {/* Summary cards */}
@@ -179,6 +200,97 @@ export function DriverAnalytics() {
         </Card>
       </div>
 
+      {/* Peak hours — campus-wide demand */}
+      <div className="mt-6">
+        <Card>
+          <p className="mb-1 text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant">
+            Campus peak demand hours
+          </p>
+          <p className="mb-4 text-xs text-on-surface-variant">
+            Based on all ride requests across CampusRide
+            {(analytics.campusDemandRideCount ?? 0) > 0 &&
+              ` · ${analytics.campusDemandRideCount} rides`}
+          </p>
+          {peakHours.length === 0 ? (
+            <div className="flex h-24 items-center justify-center">
+              <p className="text-xs text-on-surface-variant">No campus ride data yet</p>
+            </div>
+          ) : (
+            <>
+              <div className="flex gap-0.5 overflow-x-auto pb-1">
+                {allHours.map((h) => (
+                  <HourBar key={h.hour} hour={h.hour} count={h.count} max={maxHourCount} />
+                ))}
+              </div>
+              <p className="mt-3 text-xs text-on-surface-variant">
+                Campus busiest:{' '}
+                <span className="font-semibold text-on-surface">
+                  {peakHours[0].hour === 0
+                    ? '12 AM'
+                    : peakHours[0].hour < 12
+                      ? `${peakHours[0].hour} AM`
+                      : peakHours[0].hour === 12
+                        ? '12 PM'
+                        : `${peakHours[0].hour - 12} PM`}
+                </span>{' '}
+                ({peakHours[0].count} ride{peakHours[0].count !== 1 ? 's' : ''})
+              </p>
+            </>
+          )}
+        </Card>
+      </div>
+
+      {/* Hotspots */}
+      {((analytics.pickupHotspots?.length ?? 0) > 0 ||
+        (analytics.destinationHotspots?.length ?? 0) > 0) && (
+        <div className="mt-6 grid gap-3">
+          {(analytics.pickupHotspots?.length ?? 0) > 0 && (
+            <Card>
+              <p className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant">
+                Campus pickup hotspots
+              </p>
+              <ul className="space-y-2">
+                {analytics.pickupHotspots!.map((spot, i) => (
+                  <li
+                    key={spot.location}
+                    className="flex items-center justify-between gap-2 text-sm"
+                  >
+                    <span className="truncate text-on-surface">
+                      {i + 1}. {spot.location}
+                    </span>
+                    <span className="shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary">
+                      {spot.count}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </Card>
+          )}
+          {(analytics.destinationHotspots?.length ?? 0) > 0 && (
+            <Card>
+              <p className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant">
+                Campus destination hotspots
+              </p>
+              <ul className="space-y-2">
+                {analytics.destinationHotspots!.map((spot, i) => (
+                  <li
+                    key={spot.location}
+                    className="flex items-center justify-between gap-2 text-sm"
+                  >
+                    <span className="truncate text-on-surface">
+                      {i + 1}. {spot.location}
+                    </span>
+                    <span className="shrink-0 rounded-full bg-tertiary/10 px-2 py-0.5 text-[10px] font-bold text-tertiary">
+                      {spot.count}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </Card>
+          )}
+        </div>
+      )}
+
       {/* Activity table */}
       {analytics.activityLog.length > 0 && (
         <div className="mt-6">
@@ -188,6 +300,7 @@ export function DriverAnalytics() {
           <Card noPadding>
             {analytics.activityLog.map((ride, i) => {
               const { day, month } = formatDate(ride.date);
+              const cancelledByLabel = getCancelledByLabel(ride);
               return (
                 <div key={ride.id}>
                   {i > 0 && <Divider />}
@@ -206,6 +319,11 @@ export function DriverAnalytics() {
                         <span className="text-outline">→</span>
                         <span className="truncate">{ride.destinationLocation}</span>
                       </div>
+                      {cancelledByLabel && (
+                        <p className="mt-1 text-[11px] font-semibold text-error">
+                          {cancelledByLabel}
+                        </p>
+                      )}
                     </div>
                     <div className="flex shrink-0 flex-col items-end gap-1">
                       <StatusChip status={ride.status} />
@@ -264,6 +382,7 @@ export function DriverAnalytics() {
           <Card noPadding>
             {analytics.fullHistory.map((ride, i) => {
               const { day, month } = formatDate(ride.requestedAt);
+              const cancelledByLabel = getCancelledByLabel(ride);
               return (
                 <div key={ride.id}>
                   {i > 0 && <Divider />}
@@ -285,8 +404,15 @@ export function DriverAnalytics() {
                         {ride.passenger.name}
                         {ride.rating && ` · ${ride.rating.rating}/5 ★`}
                       </p>
+                      {cancelledByLabel && (
+                        <p className="mt-1 text-[11px] font-semibold text-error">
+                          {cancelledByLabel}
+                        </p>
+                      )}
                     </div>
-                    <StatusChip status={ride.status} />
+                    <div className="flex shrink-0 flex-col items-end gap-1">
+                      <StatusChip status={ride.status} />
+                    </div>
                   </div>
                 </div>
               );
