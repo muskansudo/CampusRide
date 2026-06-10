@@ -3,6 +3,9 @@ import type {
   DriverAnalytics,
   DriverDashboard,
   DriverProfile,
+  Payment,
+  PaymentHistoryItem,
+  PaymentMethod,
   PendingVerification,
   Ride,
   User,
@@ -137,6 +140,20 @@ export const api = {
       method: 'PUT',
       body: JSON.stringify(body),
     }),
+
+  getPaymentByRide: (rideId: string) =>
+    request<Payment | null>(`/payments/ride/${rideId}`),
+
+  completePayment: (id: string, method: PaymentMethod, upiTransactionId?: string) =>
+    request<Payment>(`/payments/${id}/complete`, {
+      method: 'PUT',
+      body: JSON.stringify({ method, upiTransactionId }),
+    }),
+
+  getPaymentHistory: () => request<PaymentHistoryItem[]>('/payments/history'),
+
+  updateDriverUpiId: (upiId: string) =>
+    request<DriverProfile>('/drivers/upi', { method: 'PUT', body: JSON.stringify({ upiId }) }),
 
   getPendingVerifications: () =>
     request<PendingVerification[]>('/admin/verifications/pending'),

@@ -27,6 +27,18 @@ enum VerificationStatus {
   REJECTED
 }
 
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+}
+
+enum PaymentMethod {
+  UPI
+  QR_CODE
+  CASH
+}
+
 model User {
   id           String   @id @default(cuid())
   email        String   @unique
@@ -40,9 +52,11 @@ model User {
   driverProfile    DriverProfile?
   passengerRides   Ride[]         @relation("PassengerRides")
   driverRides      Ride[]         @relation("DriverRides")
-  ratingsGiven     Rating[]         @relation("RatingsGiven")
-  ratingsReceived  Rating[]         @relation("RatingsReceived")
-  rideRejections   RideRejection[]
+  ratingsGiven        Rating[]         @relation("RatingsGiven")
+  ratingsReceived     Rating[]         @relation("RatingsReceived")
+  rideRejections      RideRejection[]
+  passengerPayments   Payment[]        @relation("PassengerPayments")
+  driverPayments      Payment[]        @relation("DriverPayments")
 
   @@map("users")
 }
@@ -57,6 +71,7 @@ model DriverProfile {
   verificationRejectionReason String?           @map("verification_rejection_reason")
   verificationSubmittedAt    DateTime?          @map("verification_submitted_at")
   verificationStatus         VerificationStatus @default(PENDING) @map("verification_status")
+  upiId              String?            @map("upi_id")
   isOnline           Boolean            @default(false) @map("is_online")
   currentLat         Float?             @map("current_lat")
   currentLng         Float?             @map("current_lng")
@@ -92,6 +107,7 @@ model Ride {
   passenger  User            @relation("PassengerRides", fields: [passengerId], references: [id])
   driver     User?           @relation("DriverRides", fields: [driverId], references: [id])
   rating     Rating?
+  payment    Payment?
   rejections RideRejection[]
 
   @@index([status, requestedAt])
@@ -128,4 +144,25 @@ model RideRejection {
 
   @@unique([rideId, driverId])
   @@map("ride_rejections")
+}
+
+model Payment {
+  id               String        @id @default(cuid())
+  rideId           String        @unique @map("ride_id")
+  passengerId      String        @map("passenger_id")
+  driverId         String        @map("driver_id")
+  amount           Float
+  status           PaymentStatus @default(PENDING)
+  method           PaymentMethod?
+  upiTransactionId String?       @map("upi_transaction_id")
+  createdAt        DateTime      @default(now()) @map("created_at")
+  completedAt      DateTime?     @map("completed_at")
+
+  ride      Ride @relation(fields: [rideId], references: [id], onDelete: Cascade)
+  passenger User @relation("PassengerPayments", fields: [passengerId], references: [id])
+  driver    User @relation("DriverPayments", fields: [driverId], references: [id])
+
+  @@index([passengerId, status])
+  @@index([driverId, status])
+  @@map("payments")
 }

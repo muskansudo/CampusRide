@@ -8,6 +8,7 @@ import {
   getDriverDashboard,
   updateDriverLocation,
   getDriverAnalytics,
+  updateDriverUpiId,
 } from "../services/driver.service.js";
 import { submitDriverVerification } from "../services/verification.service.js";
 import { authenticate, requireRole, type AuthRequest } from "../middleware/auth.js";
@@ -114,6 +115,21 @@ router.put(
           return res.status(400).json({ error: "Already verified" });
         }
       }
+      next(err);
+    }
+  }
+);
+
+router.put(
+  "/upi",
+  authenticate,
+  requireRole(Role.DRIVER),
+  async (req: AuthRequest, res, next) => {
+    try {
+      const { upiId } = z.object({ upiId: z.string().min(3) }).parse(req.body);
+      const profile = await updateDriverUpiId(req.user!.userId, upiId);
+      res.json(profile);
+    } catch (err) {
       next(err);
     }
   }

@@ -17,6 +17,29 @@ export interface DriverProfile {
   verificationSubmittedAt: string | null;
   verificationStatus: string;
   isOnline: boolean;
+  upiId: string | null;
+}
+
+export type PaymentStatus = 'PENDING' | 'COMPLETED' | 'FAILED';
+export type PaymentMethod = 'UPI' | 'QR_CODE' | 'CASH';
+
+export interface Payment {
+  id: string;
+  rideId: string;
+  passengerId: string;
+  driverId: string;
+  amount: number;
+  status: PaymentStatus;
+  method: PaymentMethod | null;
+  upiTransactionId: string | null;
+  createdAt: string;
+  completedAt: string | null;
+}
+
+export interface PaymentHistoryItem extends Payment {
+  ride: { pickupLocation: string; destinationLocation: string; completedAt: string | null };
+  driver?: { name: string };
+  passenger?: { name: string };
 }
 
 export interface PendingVerification {
@@ -76,6 +99,7 @@ export interface Ride {
   passenger: RideUser;
   driver: RideUser | null;
   rating: Rating | null;
+  payment: Payment | null;
 }
 
 export interface DriverDashboard {
@@ -83,6 +107,8 @@ export interface DriverDashboard {
   vehicleType: string;
   vehicleNumber: string;
   totalRidesCompleted: number;
+  todayEarnings: number;
+  todayRides: number;
   activeRides: Ride[];
   averageRating: number;
   totalRatings: number;

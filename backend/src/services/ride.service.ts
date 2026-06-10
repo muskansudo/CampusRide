@@ -1,5 +1,6 @@
 import { RideStatus, Role } from "@prisma/client";
 import { prisma } from "../utils/prisma.js";
+import { createPaymentForRide } from "./payment.service.js";
 
 const rideInclude = {
   passenger: {
@@ -9,6 +10,7 @@ const rideInclude = {
     select: { id: true, name: true, phone: true, email: true, driverProfile: true },
   },
   rating: true,
+  payment: true,
 };
 
 const MIN_SCHEDULE_MINUTES = 15;
@@ -231,6 +233,8 @@ export async function completeRide(rideId: string, driverId: string) {
   if (result.count === 0) {
     throw new Error("INVALID_STATE");
   }
+
+  await createPaymentForRide(rideId).catch(() => {});
 
   return getRideById(rideId);
 }

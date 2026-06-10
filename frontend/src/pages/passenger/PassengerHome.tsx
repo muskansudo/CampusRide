@@ -5,11 +5,12 @@ import { RefreshButton } from '@/components/ui/RefreshButton';
 import { api } from '@/lib/api';
 import { getSocket } from '@/lib/socket';
 import { useToastStore } from '@/store/toastStore';
-import type { AvailableDriver, Ride } from '@/types';
+import type { AvailableDriver, Payment, Ride } from '@/types';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { RideCard } from '@/components/ride/RideCard';
 import { RateRideModal } from '@/components/ride/RateRideModal';
+import { PaymentModal } from '@/components/ride/PaymentModal';
 import { MapView, type MapMarker } from '@/components/ui/MapView';
 import { Card } from '@/components/ui/Card';
 import { Divider } from '@/components/ui/Divider';
@@ -63,6 +64,7 @@ export function PassengerHome() {
   const [locationMode, setLocationMode] = useState<LocationMode>('pickup');
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [pendingPayment, setPendingPayment] = useState<{ payment: Payment; ride: Ride } | null>(null);
   const [rateRide, setRateRide] = useState<Ride | null>(null);
   const [pickupSuggestions, setPickupSuggestions] = useState<GeocodeResult[]>([]);
   const [destSuggestions, setDestSuggestions] = useState<GeocodeResult[]>([]);
@@ -124,7 +126,13 @@ export function PassengerHome() {
     const onRideUpdate = (ride: Ride) => {
       if (ride.passengerId) {
         setActiveRide(ride);
-        if (ride.status === 'COMPLETED') setRateRide(ride);
+        if (ride.status === 'COMPLETED') {
+          if (ride.payment && ride.payment.status === 'PENDING') {
+            setPendingPayment({ payment: ride.payment, ride });
+          } else {
+            setRateRide(ride);
+          }
+        }
         if (ride.status === 'CANCELLED') setDriverLocation(null);
       }
     };
@@ -569,6 +577,23 @@ export function PassengerHome() {
           </>
         )}
       </div>
+
+      {pendingPayment && (
+        <PaymentModal
+          payment={pendingPayment.payment}
+          driverName={pendingPayment.ride.driver?.name ?? 'Driver'}
+          driverUpiId={pendingPayment.ride.driver?.driverProfile?.upiId ?? null}
+          onClose={(paid) => {
+            const ride = pendingPayment.ride;
+            setPendingPayment(null);
+            if (paid) {
+              setRateRide(ride);
+            } else {
+              setActiveRide(null);
+            }
+          }}
+        />
+      )}
 
       {rateRide && (
         <RateRideModal

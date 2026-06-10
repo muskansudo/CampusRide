@@ -38,6 +38,13 @@ export async function updateVehicleInfo(
   });
 }
 
+export async function updateDriverUpiId(userId: string, upiId: string) {
+  return prisma.driverProfile.update({
+    where: { userId },
+    data: { upiId },
+  });
+}
+
 export async function getAvailableDrivers() {
   return prisma.driverProfile.findMany({
     where: { isOnline: true },
@@ -239,46 +246,67 @@ export async function getDriverDashboard(userId: string) {
 
   if (!profile) throw new Error("NOT_DRIVER");
 
-  const [completedRides, activeRides, ratings, recentRides] = await Promise.all([
-    prisma.ride.count({
-      where: { driverId: userId, status: "COMPLETED" },
-    }),
-    prisma.ride.findMany({
-      where: {
-        driverId: userId,
-        status: { in: ["ACCEPTED", "IN_PROGRESS"] },
-      },
-      include: {
-        passenger: { select: { id: true, name: true, phone: true } },
-      },
-    }),
-    prisma.rating.findMany({
-      where: { driverId: userId },
-      orderBy: { createdAt: "desc" },
-      take: 20,
-      include: {
-        passenger: { select: { name: true } },
-        ride: { select: { pickupLocation: true, destinationLocation: true } },
-      },
-    }),
-    prisma.ride.findMany({
-      where: {
-        driverId: userId,
-        status: { in: ["COMPLETED", "CANCELLED"] },
-      },
-      orderBy: { requestedAt: "desc" },
-      take: 10,
-      include: {
-        passenger: { select: { name: true } },
-        rating: true,
-      },
-    }),
-  ]);
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+
+  const [completedRides, activeRides, ratings, recentRides, todayPayments, todayRidesCount] =
+    await Promise.all([
+      prisma.ride.count({
+        where: { driverId: userId, status: "COMPLETED" },
+      }),
+      prisma.ride.findMany({
+        where: {
+          driverId: userId,
+          status: { in: ["ACCEPTED", "IN_PROGRESS"] },
+        },
+        include: {
+          passenger: { select: { id: true, name: true, phone: true } },
+        },
+      }),
+      prisma.rating.findMany({
+        where: { driverId: userId },
+        orderBy: { createdAt: "desc" },
+        take: 20,
+        include: {
+          passenger: { select: { name: true } },
+          ride: { select: { pickupLocation: true, destinationLocation: true } },
+        },
+      }),
+      prisma.ride.findMany({
+        where: {
+          driverId: userId,
+          status: { in: ["COMPLETED", "CANCELLED"] },
+        },
+        orderBy: { requestedAt: "desc" },
+        take: 10,
+        include: {
+          passenger: { select: { name: true } },
+          rating: true,
+        },
+      }),
+      prisma.payment.findMany({
+        where: {
+          driverId: userId,
+          status: "COMPLETED",
+          completedAt: { gte: todayStart },
+        },
+        select: { amount: true },
+      }),
+      prisma.ride.count({
+        where: {
+          driverId: userId,
+          status: "COMPLETED",
+          completedAt: { gte: todayStart },
+        },
+      }),
+    ]);
 
   const avgRating =
     ratings.length > 0
       ? ratings.reduce((sum, r) => sum + r.rating, 0) / ratings.length
       : 0;
+
+  const todayEarnings = todayPayments.reduce((sum, p) => sum + p.amount, 0);
 
   return {
     isOnline: profile.isOnline,
@@ -290,5 +318,7 @@ export async function getDriverDashboard(userId: string) {
     totalRatings: ratings.length,
     recentRatings: ratings.slice(0, 5),
     rideHistory: recentRides,
+    todayEarnings,
+    todayRides: todayRidesCount,
   };
 }

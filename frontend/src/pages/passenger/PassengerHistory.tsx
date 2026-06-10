@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { MapPin } from 'lucide-react';
 import { RefreshButton } from '@/components/ui/RefreshButton';
 import { api } from '@/lib/api';
-import type { Ride } from '@/types';
+import type { PaymentHistoryItem, Ride } from '@/types';
 import { Card } from '@/components/ui/Card';
 import { StatusChip } from '@/components/ui/StatusChip';
 import { Divider } from '@/components/ui/Divider';
@@ -16,14 +16,34 @@ function formatRideDate(dateStr: string) {
   };
 }
 
+function PaymentBadge({ payment }: { payment?: PaymentHistoryItem }) {
+  if (!payment) return null;
+  const colors =
+    payment.status === 'COMPLETED'
+      ? 'bg-primary-fixed/30 text-primary'
+      : payment.status === 'PENDING'
+      ? 'bg-yellow-500/20 text-yellow-600'
+      : 'bg-red-500/20 text-red-400';
+  return (
+    <span className={`rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide ${colors}`}>
+      ₹{payment.amount} {payment.status === 'COMPLETED' ? (payment.method ?? 'paid') : 'unpaid'}
+    </span>
+  );
+}
+
 export function PassengerHistory() {
   const [rides, setRides] = useState<Ride[]>([]);
+  const [payments, setPayments] = useState<PaymentHistoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
   const load = async () => {
-    const data = await api.getRideHistory();
-    setRides(data);
+    const [rideData, paymentData] = await Promise.all([
+      api.getRideHistory(),
+      api.getPaymentHistory().catch(() => [] as PaymentHistoryItem[]),
+    ]);
+    setRides(rideData);
+    setPayments(paymentData);
   };
 
   useEffect(() => {
@@ -38,6 +58,8 @@ export function PassengerHistory() {
       setRefreshing(false);
     }
   };
+
+  const paymentByRide = Object.fromEntries(payments.map((p) => [p.rideId, p]));
 
   return (
     <div>
@@ -94,6 +116,7 @@ export function PassengerHistory() {
                   </div>
                   <div className="flex shrink-0 flex-col items-end gap-1">
                     <StatusChip status={ride.status} />
+                    <PaymentBadge payment={paymentByRide[ride.id]} />
                   </div>
                 </div>
               </div>

@@ -305,29 +305,33 @@ export function DriverDashboard() {
       )}
 
       <div className="grid grid-cols-2 gap-3">
+        {/* Daily earnings hero card */}
         <Card variant="deep" className="col-span-2 !p-5">
           <div className="flex items-end justify-between">
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant">
-                Total Completed
+                Today's Earnings
               </p>
               <p className="font-display text-5xl text-primary-container">
-                {dashboard.totalRidesCompleted}
+                ₹{dashboard.todayEarnings}
+              </p>
+              <p className="mt-1 text-xs text-on-surface-variant">
+                {dashboard.todayRides} ride{dashboard.todayRides !== 1 ? 's' : ''} completed today
               </p>
             </div>
             <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary-fixed/40">
-              <Car className="h-6 w-6 text-primary" />
+              <TrendingUp className="h-6 w-6 text-primary" />
             </div>
           </div>
         </Card>
 
         <Card className="!p-4 text-center">
           <div className="mx-auto mb-2 flex h-9 w-9 items-center justify-center rounded-xl bg-secondary-container/30">
-            <TrendingUp className="h-4 w-4 text-on-secondary-container" />
+            <Car className="h-4 w-4 text-on-secondary-container" />
           </div>
-          <p className="font-display text-2xl text-primary">{dashboard.activeRides.length}</p>
+          <p className="font-display text-2xl text-primary">{dashboard.totalRidesCompleted}</p>
           <p className="text-[10px] font-semibold uppercase tracking-wide text-on-surface-variant">
-            Active
+            Total
           </p>
         </Card>
 

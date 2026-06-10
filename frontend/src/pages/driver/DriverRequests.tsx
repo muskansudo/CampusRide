@@ -1,19 +1,27 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Inbox } from 'lucide-react';
 import { RefreshButton } from '@/components/ui/RefreshButton';
 import { api } from '@/lib/api';
 import { getSocket } from '@/lib/socket';
 import { useToastStore } from '@/store/toastStore';
+import { useRideRequestStore } from '@/store/rideRequestStore';
 import type { Ride } from '@/types';
 import { Card } from '@/components/ui/Card';
 import { RideCard } from '@/components/ride/RideCard';
 
 export function DriverRequests() {
+  const navigate = useNavigate();
   const [rides, setRides] = useState<Ride[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const addToast = useToastStore((s) => s.addToast);
+  const clearBadge = useRideRequestStore((s) => s.clear);
+
+  useEffect(() => {
+    clearBadge();
+  }, [clearBadge]);
 
   const loadRides = useCallback(async () => {
     const data = await api.getPendingRides();
@@ -59,6 +67,7 @@ export function DriverRequests() {
     try {
       await api.acceptRide(rideId);
       setRides((prev) => prev.filter((r) => r.id !== rideId));
+      navigate('/driver', { replace: true });
     } catch (err) {
       addToast('error', err instanceof Error ? err.message : 'Failed to accept ride');
     } finally {

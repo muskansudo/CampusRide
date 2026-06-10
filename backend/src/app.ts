@@ -5,6 +5,7 @@ import authRoutes from "./routes/auth.routes.js";
 import driverRoutes from "./routes/driver.routes.js";
 import rideRoutes from "./routes/ride.routes.js";
 import adminRoutes from "./routes/admin.routes.js";
+import paymentRoutes from "./routes/payment.routes.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 import { sessionMiddleware } from "./config/session.js";
 
@@ -42,6 +43,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/drivers", driverRoutes);
 app.use("/api/rides", rideRoutes);
 app.use("/api/admin", adminRoutes);
+app.use("/api/payments", paymentRoutes);
 
 app.use(errorHandler);
 

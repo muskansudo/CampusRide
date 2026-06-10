@@ -3,9 +3,12 @@ import type { Ride } from '@/types';
 import { getSocket } from '@/lib/socket';
 import { showBrowserNotification } from '@/lib/notifications';
 import { useAuthStore } from '@/store/authStore';
+import { useRideRequestStore } from '@/store/rideRequestStore';
 
 export function useRideNotifications() {
   const user = useAuthStore((s) => s.user);
+  const incrementBadge = useRideRequestStore((s) => s.increment);
+  const decrementBadge = useRideRequestStore((s) => s.decrement);
 
   useEffect(() => {
     if (!user) return;
@@ -14,6 +17,7 @@ export function useRideNotifications() {
 
     const onRequested = (ride: Ride) => {
       if (user.role !== 'DRIVER') return;
+      incrementBadge();
       showBrowserNotification(
         'New ride request',
         `${ride.passenger.name}: ${ride.pickupLocation} → ${ride.destinationLocation}`,
@@ -67,16 +71,25 @@ export function useRideNotifications() {
       );
     };
 
+    const onDriverRideRemoved = (ride: Ride) => {
+      if (user.role !== 'DRIVER') return;
+      decrementBadge();
+    };
+
     socket.on('ride:requested', onRequested);
     socket.on('ride:accepted', onAccepted);
     socket.on('ride:status:update', onStatusUpdate);
     socket.on('ride:cancelled', onCancelled);
+    socket.on('ride:accepted', onDriverRideRemoved);
+    socket.on('ride:cancelled', onDriverRideRemoved);
 
     return () => {
       socket.off('ride:requested', onRequested);
       socket.off('ride:accepted', onAccepted);
       socket.off('ride:status:update', onStatusUpdate);
       socket.off('ride:cancelled', onCancelled);
+      socket.off('ride:accepted', onDriverRideRemoved);
+      socket.off('ride:cancelled', onDriverRideRemoved);
     };
-  }, [user]);
+  }, [user, incrementBadge, decrementBadge]);
 }

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/store/authStore';
 import { useToastStore } from '@/store/toastStore';
+import { api } from '@/lib/api';
 import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
@@ -43,6 +44,8 @@ export function DriverProfile() {
   const [governmentIdNumber, setGovernmentIdNumber] = useState(
     user?.driverProfile?.governmentIdNumber ?? ''
   );
+  const [upiId, setUpiId] = useState(user?.driverProfile?.upiId ?? '');
+  const [savingUpi, setSavingUpi] = useState(false);
   const [saving, setSaving] = useState(false);
   const [submittingVerification, setSubmittingVerification] = useState(false);
 
@@ -84,6 +87,19 @@ export function DriverProfile() {
       addToast('error', err instanceof Error ? err.message : 'Failed to submit verification');
     } finally {
       setSubmittingVerification(false);
+    }
+  };
+
+  const handleSaveUpi = async () => {
+    if (!upiId.trim()) return;
+    setSavingUpi(true);
+    try {
+      await api.updateDriverUpiId(upiId.trim());
+      addToast('success', 'UPI ID saved');
+    } catch {
+      addToast('error', 'Failed to save UPI ID');
+    } finally {
+      setSavingUpi(false);
     }
   };
 
@@ -192,6 +208,29 @@ export function DriverProfile() {
           )}
         </Card>
       )}
+
+      <Card>
+        <p className="mb-1 text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant">
+          Payment
+        </p>
+        <p className="mb-4 text-xs text-on-surface-variant">
+          Your UPI ID lets passengers pay you directly via QR or UPI apps.
+        </p>
+        <Input
+          label="UPI ID"
+          value={upiId}
+          onChange={(e) => setUpiId(e.target.value)}
+          placeholder="yourname@upi"
+        />
+        <Button
+          className="mt-3 w-full"
+          onClick={handleSaveUpi}
+          loading={savingUpi}
+          disabled={savingUpi || !upiId.trim()}
+        >
+          Save UPI ID
+        </Button>
+      </Card>
 
       <Card>
         <p className="mb-4 text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant">
