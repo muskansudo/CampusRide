@@ -198,7 +198,7 @@ API and Socket.IO requests from the frontend use `credentials: 'include'` so the
 | `npm run db:seed` | Create test passenger, driver & admin accounts |
 | `npm run db:studio` | Open Prisma Studio GUI |
 
-After pulling changes that modify `backend/prisma/schema.prisma`, run `npm run db:push` and restart the backend.
+After pulling these changes that modify `backend/prisma/schema.prisma`, run `npm run db:push` and restart the backend.
 
 ## Documentation
 
