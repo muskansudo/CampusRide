@@ -2,6 +2,10 @@
 
 A real-time web application that connects **campus passengers** with **e-rickshaw drivers**. Passengers can request rides on a map, track status live, and pay when a trip completes. Drivers manage availability, accept requests, and view analytics. Admins review driver verification before drivers can go online.
 
+![CampusRide Demo](./docs/demo.png)
+
+**Watch the Demo Video:** [https://youtu.be/WzgieHWr37M](https://youtu.be/WzgieHWr37M)
+
 ---
 
 ## Table of Contents
