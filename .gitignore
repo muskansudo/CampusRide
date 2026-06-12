@@ -8,3 +8,8 @@ build/
 coverage/
 .vscode/
 .idea/
+
+# Dev session cookies (curl); never commit
+cookie.txt
+prod_cookie.txt
+backend/cookies.txt

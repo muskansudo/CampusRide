@@ -6,6 +6,10 @@ A real-time web application that connects **campus passengers** with **e-ricksha
 
 **Watch the Demo Video:** [https://youtu.be/WzgieHWr37M](https://youtu.be/WzgieHWr37M)
 
+**Design Document:** [CampusRide-Design-Document.pdf](./CampusRide-Design-Document.pdf)
+
+**Repository:** [https://github.com/muskansudo/CampusRide](https://github.com/muskansudo/CampusRide)
+
 ---
 
 ## Table of Contents
@@ -47,10 +51,15 @@ The app is a **single-page web application (SPA)** with role-based routes. The b
 
 ```
 CampusRide/
-├── backend/           # Node.js API, Socket.IO, Prisma ORM
-├── frontend/          # React SPA (Vite)
-├── docker-compose.yml # Optional local PostgreSQL (not required with Supabase)
-└── README.md          # This file
+├── backend/                      # Node.js API, Socket.IO, Prisma ORM
+│   ├── .env.example              # Backend environment template
+│   ├── prisma/schema.prisma      # Database schema
+│   └── prisma/seed.ts            # Test accounts (passenger, driver, admin)
+├── frontend/                     # React SPA (Vite)
+│   └── .env.example              # Frontend environment template (optional)
+├── docker-compose.yml            # Optional local PostgreSQL (not required with Supabase)
+├── CampusRide-Design-Document.pdf
+└── README.md
 ```
 
 ---
@@ -140,7 +149,7 @@ Install the following before starting:
 ### Step 1 — Clone the repository
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/muskansudo/CampusRide.git
 cd CampusRide
 ```
 
@@ -207,14 +216,18 @@ cd ../frontend
 npm install
 ```
 
-Optional: create `frontend/.env` only if you need custom API URLs:
+Optional: copy the frontend env template if you need custom API URLs:
+
+```bash
+cp .env.example .env   # run from frontend/
+```
 
 ```env
 VITE_API_URL=http://localhost:3001/api
 VITE_SOCKET_URL=http://localhost:3001
 ```
 
-Defaults point to `http://localhost:3001` if these are omitted.
+Defaults point to `http://localhost:3001` if `.env` is omitted.
 
 ### Optional: local PostgreSQL via Docker
 
